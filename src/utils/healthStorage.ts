@@ -11,15 +11,31 @@ export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+// SymptomData 구조 검증 타입 가드
+export function isValidSymptomData(obj: unknown): obj is SymptomData {
+  if (typeof obj !== "object" || obj === null) return false;
+  const s = obj as Record<string, unknown>;
+  return (
+    typeof s.department === "string" && s.department.length > 0 &&
+    typeof s.searchKeyword === "string" &&
+    (s.urgency === "일반" || s.urgency === "주의" || s.urgency === "응급") &&
+    typeof s.urgencyReason === "string"
+  );
+}
+
+const TAG_RE = /\[SYMPTOM_DATA\]([\s\S]*?)\[\/SYMPTOM_DATA\]/;
+const TAG_STRIP_RE = /\[SYMPTOM_DATA\][\s\S]*?\[\/SYMPTOM_DATA\]/g;
+
 export function parseSymptomData(text: string): { clean: string; symptomData?: SymptomData } {
-  const match = text.match(/\[SYMPTOM_DATA\]([\s\S]*?)\[\/SYMPTOM_DATA\]/);
+  const match = text.match(TAG_RE);
+  const clean = text.replace(TAG_STRIP_RE, "").trim();
   if (!match) return { clean: text.trim() };
   try {
-    const symptomData: SymptomData = JSON.parse(match[1].trim());
-    const clean = text.replace(/\[SYMPTOM_DATA\][\s\S]*?\[\/SYMPTOM_DATA\]/g, "").trim();
-    return { clean, symptomData };
+    const parsed: unknown = JSON.parse(match[1].trim());
+    if (!isValidSymptomData(parsed)) return { clean };
+    return { clean, symptomData: parsed };
   } catch {
-    return { clean: text.replace(/\[SYMPTOM_DATA\][\s\S]*?\[\/SYMPTOM_DATA\]/g, "").trim() };
+    return { clean };
   }
 }
 

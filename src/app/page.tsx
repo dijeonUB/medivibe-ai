@@ -1,15 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-import { ViewType, Message, HealthSession } from "@/types";
+import { ViewType, HealthSession } from "@/types";
 import { UBCARE_ORANGE, APP_VERSION, QUICK_QUESTIONS } from "@/constants";
-import {
-  todayStr, generateId, parseSymptomData, generateSessionTitle,
-  loadSessions, saveSession,
-  deleteSessionById, deleteSessionsByMonth, deleteAllSessions,
-} from "@/utils/healthStorage";
+import { useChat } from "@/hooks/useChat";
+import { useRecords } from "@/hooks/useRecords";
 import { PulseIcon, CalendarIcon, PillIcon, NewsIcon, EditIcon, TrashIcon, SearchIcon } from "@/components/icons";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import HospitalCard from "@/components/HospitalCard";
@@ -28,27 +25,23 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
-  // 채팅 — sessionId를 변경 가능하게
-  const [currentSessionId, setCurrentSessionId] = useState(() => generateId());
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // 채팅 상태 및 액션 (커스텀 훅)
+  const {
+    messages, input, isLoading, setInput,
+    sendMessage, startNewChat, loadSession, messagesEndRef,
+  } = useChat();
 
-  // 기록
-  const [sessions, setSessions] = useState<HealthSession[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr());
-  const [selectedSession, setSelectedSession] = useState<HealthSession | null>(null);
-  const [calendarMonth, setCalendarMonth] = useState<{ year: number; month: number }>({
-    year: new Date().getFullYear(), month: new Date().getMonth(),
-  });
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // 삭제 다이얼로그
-  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
-
-  useEffect(() => { setSessions(loadSessions()); }, []);
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // 건강기록 상태 및 액션 (커스텀 훅)
+  const {
+    sessions,
+    selectedDate, setSelectedDate,
+    selectedSession, setSelectedSession,
+    calendarMonth, setCalendarMonth,
+    searchQuery, setSearchQuery,
+    displaySessions,
+    confirmDialog, setConfirmDialog,
+    handleDeleteSession, handleDeleteMonth, handleDeleteAll,
+  } = useRecords();
 
   // 첫 방문 시 튜토리얼 자동 표시
   useEffect(() => {
@@ -63,123 +56,16 @@ export default function Home() {
     setShowTutorial(false);
   }, []);
 
-  const persistSession = useCallback((msgs: Message[]) => {
-    if (msgs.filter((m) => m.role === "user").length === 0) return;
-    const lastSymptom = [...msgs].reverse().find((m) => m.symptomData)?.symptomData;
-    const title = generateSessionTitle(msgs, lastSymptom);
-    const session: HealthSession = {
-      id: currentSessionId, date: todayStr(), createdAt: new Date().toISOString(),
-      title, messages: msgs, symptomData: lastSymptom,
-    };
-    saveSession(session);
-    setSessions(loadSessions());
-  }, [currentSessionId]);
+  const handleContinueSession = useCallback(
+    (session: HealthSession) => {
+      loadSession(session);
+      setView("chat");
+      window.scrollTo(0, 0);
+    },
+    [loadSession]
+  );
 
-  // 새 대화 시작
-  const startNewChat = useCallback(() => {
-    setMessages([]);
-    setCurrentSessionId(generateId());
-    setInput("");
-  }, []);
-
-  // 이전 대화 이어서 상담
-  const handleContinueSession = useCallback((session: HealthSession) => {
-    setMessages(session.messages);
-    setCurrentSessionId(generateId()); // 새 세션 ID로 저장됨
-    setView("chat");
-    window.scrollTo(0, 0);
-  }, []);
-
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
-    const userMsg: Message = { role: "user", content: text };
-    const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
-    setInput("");
-    setIsLoading(true);
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages.map((m) => ({ role: m.role, content: m.content })) }),
-      });
-      if (!res.ok) throw new Error("API 오류");
-      const reader = res.body?.getReader();
-      if (!reader) throw new Error("스트림 오류");
-      const decoder = new TextDecoder();
-      let fullText = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        fullText += decoder.decode(value);
-        const display = fullText.replace(/\[SYMPTOM_DATA\][\s\S]*?(\[\/SYMPTOM_DATA\]|$)/g, "").trim();
-        setMessages((prev) => { const u = [...prev]; u[u.length - 1] = { role: "assistant", content: display }; return u; });
-      }
-      const { clean, symptomData } = parseSymptomData(fullText);
-      const finalMessages: Message[] = [...nextMessages, { role: "assistant", content: clean, symptomData }];
-      setMessages(finalMessages);
-      persistSession(finalMessages);
-    } catch {
-      setMessages((prev) => { const u = [...prev]; u[u.length - 1] = { role: "assistant", content: "오류가 발생했습니다. 다시 시도해주세요." }; return u; });
-    } finally { setIsLoading(false); }
-  };
-
-  // 삭제 핸들러
-  const handleDeleteSession = (id: string) => {
-    setConfirmDialog({
-      message: "이 상담 기록을 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.",
-      onConfirm: () => {
-        deleteSessionById(id);
-        setSessions(loadSessions());
-        if (selectedSession?.id === id) setSelectedSession(null);
-        setConfirmDialog(null);
-      },
-    });
-  };
-
-  const handleDeleteMonth = () => {
-    const { year, month } = calendarMonth;
-    const count = sessions.filter((s) => {
-      const d = new Date(s.date);
-      return d.getFullYear() === year && d.getMonth() === month;
-    }).length;
-    if (count === 0) return;
-    setConfirmDialog({
-      message: `${year}년 ${month + 1}월 상담 기록 ${count}건을 모두 삭제하시겠습니까?`,
-      onConfirm: () => {
-        deleteSessionsByMonth(year, month);
-        setSessions(loadSessions());
-        setSelectedSession(null);
-        setConfirmDialog(null);
-      },
-    });
-  };
-
-  const handleDeleteAll = () => {
-    if (sessions.length === 0) return;
-    setConfirmDialog({
-      message: `전체 상담 기록 ${sessions.length}건을 모두 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.`,
-      onConfirm: () => {
-        deleteAllSessions();
-        setSessions([]);
-        setSelectedSession(null);
-        setSelectedDate(todayStr());
-        setConfirmDialog(null);
-      },
-    });
-  };
-
-  const trimmedQuery = searchQuery.trim();
-  const displaySessions = trimmedQuery
-    ? sessions.filter((s) =>
-        s.title.toLowerCase().includes(trimmedQuery.toLowerCase()) ||
-        s.messages.some((m) => m.content.toLowerCase().includes(trimmedQuery.toLowerCase())) ||
-        (s.symptomData?.department.toLowerCase().includes(trimmedQuery.toLowerCase()) ?? false)
-      )
-    : sessions.filter((s) => s.date === selectedDate);
-
-  // ── 네비 아이템 (4개) ────────────────────────────────
+  // ── 네비 아이템 ───────────────────────────────────────
   const NAV_ITEMS = [
     { key: "chat" as ViewType,        icon: (cls: string) => <PulseIcon className={cls} />,    labelLong: "AI 건강 상담",  labelShort: "AI 상담" },
     { key: "records" as ViewType,     icon: (cls: string) => <CalendarIcon className={cls} />, labelLong: "건강기록",      labelShort: "건강기록" },
@@ -187,7 +73,9 @@ export default function Home() {
     { key: "news" as ViewType,        icon: (cls: string) => <NewsIcon className={cls} />,     labelLong: "건강뉴스",      labelShort: "뉴스" },
   ];
 
-  // ── 채팅 영역 ────────────────────────────────────────
+  const trimmedQuery = searchQuery.trim();
+
+  // ── 채팅 영역 ─────────────────────────────────────────
   const ChatArea = (
     <div className="flex flex-col h-full">
       <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-4">
@@ -274,10 +162,9 @@ export default function Home() {
     </div>
   );
 
-  // ── 건강기록 영역 ────────────────────────────────────
+  // ── 건강기록 영역 ──────────────────────────────────────
   const RecordsArea = (
     <div className="h-full overflow-hidden flex flex-col">
-      {/* 상단 헤더 */}
       <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-200 bg-white flex-shrink-0">
         <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
           <CalendarIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
@@ -295,10 +182,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* 메인 레이아웃: 좌측 캘린더 고정 + 우측 검색/리스트 */}
       <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-
-        {/* ── 좌측: 캘린더 (항상 표시) ── */}
         <div className="lg:w-[360px] xl:w-[400px] flex-shrink-0 overflow-y-auto px-4 pt-4 pb-4 lg:border-r border-gray-200 bg-white">
           <Calendar
             sessions={sessions}
@@ -306,13 +190,10 @@ export default function Home() {
             onSelectDate={(d) => { setSelectedDate(d); setSelectedSession(null); setSearchQuery(""); }}
             onViewMonthChange={(y, m) => setCalendarMonth({ year: y, month: m })}
           />
-          {/* 모바일용 구분선 */}
           <div className="lg:hidden mt-4 border-t border-gray-200" />
         </div>
 
-        {/* ── 우측: 검색 + 기록 목록 ── */}
         <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
-          {/* 검색창 */}
           <div className="relative mb-3">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <input
@@ -327,7 +208,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* 결과 영역 */}
           {trimmedQuery ? (
             <div>
               <p className="text-xs text-gray-500 mb-3 font-medium">&ldquo;{trimmedQuery}&rdquo; 검색 결과 ({displaySessions.length}건)</p>
@@ -391,7 +271,7 @@ export default function Home() {
           {NAV_ITEMS.map((item) => (
             <button key={item.key}
               data-tutorial={`nav-${item.key}`}
-              onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
+              onClick={() => setView(item.key)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${view === item.key ? "text-white" : "text-gray-600 hover:bg-gray-100"}`}
               style={view === item.key ? { backgroundColor: UBCARE_ORANGE } : {}}>
               {item.icon("w-5 h-5")}{item.labelLong}
@@ -399,7 +279,6 @@ export default function Home() {
           ))}
         </nav>
 
-        {/* 새 대화 버튼 (사이드바 하단) */}
         {view === "chat" && (
           <div className="px-3 pb-2">
             <button onClick={startNewChat}
@@ -419,7 +298,6 @@ export default function Home() {
 
       {/* ── 메인 영역 ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* 헤더 */}
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center flex-shrink-0">
           <div className="lg:hidden flex-1 flex justify-center">
             <Image src="/ubcare-logo.png" alt="UBcare" width={100} height={28} className="object-contain" />
@@ -446,11 +324,9 @@ export default function Home() {
           </div>
         </header>
 
-        {/* 콘텐츠 */}
         <div className="flex-1 overflow-hidden">
           {view === "chat" && ChatArea}
           {view === "records" && RecordsArea}
-          {/* 건강식품·뉴스는 마운트 유지 — 탭 전환 시 캐시 보존 */}
           <div className="h-full" style={{ display: view === "supplements" ? "block" : "none" }}>
             <SupplementsView />
           </div>
@@ -459,12 +335,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 모바일 하단 네비 (4개) */}
         <nav className="lg:hidden bg-white border-t border-gray-200 flex flex-shrink-0">
           {NAV_ITEMS.map((item) => (
             <button key={item.key}
               data-tutorial={`nav-${item.key}`}
-              onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
+              onClick={() => setView(item.key)}
               className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 font-medium transition-colors ${view === item.key ? "" : "text-gray-400"}`}
               style={view === item.key ? { color: UBCARE_ORANGE } : {}}>
               {item.icon("w-5 h-5")}
@@ -481,7 +356,11 @@ export default function Home() {
         />
       )}
       {confirmDialog && (
-        <ConfirmDialog message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(null)} />
+        <ConfirmDialog
+          message={confirmDialog.message}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
       )}
       <TutorialOverlay isVisible={showTutorial} onClose={handleTutorialClose} />
     </div>
