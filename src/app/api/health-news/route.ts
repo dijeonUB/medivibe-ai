@@ -30,7 +30,7 @@ const SYSTEM_PROMPT = `당신은 건강 의학 전문 에디터입니다.
 - 면역력: #3b82f6
 - 생활습관: #8b5cf6
 
-5개 기사를 작성하세요. 실제 한국의 계절별 건강 정보를 기반으로 실용적인 내용을 담아주세요.`;
+8개 기사를 작성하세요. 실제 한국의 계절별 건강 정보를 기반으로 실용적인 내용을 담아주세요.`;
 
 export async function POST(req: Request) {
   try {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages: [{
         role: "user",
-        content: `현재 ${month}월 ${season} 시즌입니다. 이 시기 한국에서 주의해야 할 건강 정보 5개를 제공해주세요.`,
+        content: `현재 ${month}월 ${season} 시즌입니다. 이 시기 한국에서 주의해야 할 건강 정보 8개를 제공해주세요.`,
       }],
     });
     const text = response.content[0].type === "text" ? response.content[0].text : "";

@@ -60,8 +60,9 @@ interface NewsData {
 // ─── 상수 ────────────────────────────────────────────────
 const UBCARE_ORANGE = "#ec6120";
 const STORAGE_KEY = "medivibe_sessions";
-const APP_VERSION = "v1.0.0";
+const APP_VERSION = "v1.3.0";
 const BUILD_DATE = "2026-03-13";
+const FEEDBACK_EMAIL = "medivibe@ubcare.co.kr";
 
 const URGENCY_STYLE = {
   일반: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200", icon: "✅" },
@@ -153,6 +154,62 @@ function ReplyIcon({ className, style }: IconProps) {
     </svg>
   );
 }
+
+// ─── 업데이트 내역 ────────────────────────────────────────
+const UPDATE_HISTORY = [
+  {
+    version: "v1.3.0",
+    date: "2026-03-13",
+    badge: "최신",
+    badgeColor: "#22c55e",
+    items: [
+      "건강식품 추천 속도 개선 및 캐시 적용",
+      "더보기 기능 — 최대 10개 제품/뉴스 조회",
+      "건강식품 추천 PC 반응형 그리드 레이아웃",
+      "메뉴 패널 업데이트 내역·불만 접수 탭 추가",
+    ],
+  },
+  {
+    version: "v1.2.0",
+    date: "2026-03-13",
+    badge: null,
+    badgeColor: null,
+    items: [
+      "건강식품 추천 메뉴 신규 추가 (카테고리/정렬/쇼핑 링크)",
+      "건강뉴스 메뉴 신규 추가 (계절별 AI 큐레이션)",
+      "AI 건강상담 새 대화 버튼(✏️) 추가",
+      "건강기록에서 이어서 상담 기능 추가",
+      "네비게이션 2개 → 4개 확장",
+    ],
+  },
+  {
+    version: "v1.1.0",
+    date: "2026-03-12",
+    badge: null,
+    badgeColor: null,
+    items: [
+      "건강기록 개별·월별·전체 삭제 기능",
+      "건강기록 키워드 검색 기능",
+      "챗봇 아바타 고정 원형 디자인 (버그 수정)",
+      "달력 숫자 가독성 개선",
+      "세션 타이틀 AI 자동 요약 적용",
+      "고급 SVG 아이콘 교체 (AI 상담·건강기록)",
+    ],
+  },
+  {
+    version: "v1.0.0",
+    date: "2026-03-11",
+    badge: null,
+    badgeColor: null,
+    items: [
+      "AI 건강 상담 채팅 (스트리밍 응답)",
+      "증상 분석 및 진료과 추천",
+      "건강기록 캘린더 뷰",
+      "반응형 PC·모바일 레이아웃",
+      "UBCare 로고·캐릭터 적용",
+    ],
+  },
+];
 
 // ─── 기능 가이드 (아이콘 컴포넌트 정의 이후) ──────────────
 const FEATURE_GUIDE = [
@@ -451,6 +508,18 @@ const SORT_OPTIONS = [
   { value: "priceHigh", label: "가격높은순" },
 ];
 
+// 카테고리별 이미지 아이콘 매핑
+const SUPP_ICON_MAP: Record<string, { emoji: string; bg: string; text: string }> = {
+  "면역력":  { emoji: "🛡️", bg: "#fff7ed", text: "#c2410c" },
+  "피로회복": { emoji: "⚡", bg: "#fefce8", text: "#a16207" },
+  "관절건강": { emoji: "🦴", bg: "#f0fdf4", text: "#15803d" },
+  "눈건강":  { emoji: "👁️", bg: "#eff6ff", text: "#1d4ed8" },
+  "소화건강": { emoji: "🌿", bg: "#f0fdf4", text: "#166534" },
+  "수면개선": { emoji: "🌙", bg: "#f5f3ff", text: "#6d28d9" },
+  "피부건강": { emoji: "✨", bg: "#fdf4ff", text: "#9333ea" },
+  "다이어트": { emoji: "🏃", bg: "#fff1f2", text: "#e11d48" },
+};
+
 function SupplementsView() {
   const [category, setCategory] = useState("면역력");
   const [sortBy, setSortBy] = useState("popular");
@@ -458,9 +527,21 @@ function SupplementsView() {
   const [data, setData] = useState<SupplementsData | null>(null);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  // 클라이언트 캐시 (컴포넌트 생존 동안 유지)
+  const cache = useRef<Record<string, SupplementsData>>({});
 
   const fetchSupplements = useCallback(async (cat: string, sort: string) => {
-    setLoading(true); setError(""); setExpandedId(null);
+    const key = `${cat}_${sort}`;
+    // 캐시 히트 시 즉시 반환
+    if (cache.current[key]) {
+      setData(cache.current[key]);
+      setShowAll(false);
+      setExpandedId(null);
+      return;
+    }
+    setLoading(true); setError(""); setExpandedId(null); setShowAll(false);
     try {
       const res = await fetch("/api/supplements", {
         method: "POST",
@@ -469,6 +550,7 @@ function SupplementsView() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
+      cache.current[key] = json;
       setData(json);
     } catch { setError("추천 목록을 불러오는 중 오류가 발생했습니다."); }
     finally { setLoading(false); }
@@ -476,9 +558,13 @@ function SupplementsView() {
 
   useEffect(() => { fetchSupplements(category, sortBy); }, [category, sortBy, fetchSupplements]);
 
+  const iconInfo = SUPP_ICON_MAP[category] ?? { emoji: "💊", bg: "#fff7ed", text: "#c2410c" };
+  const visibleProducts = data?.products ? (showAll ? data.products : data.products.slice(0, 5)) : [];
+  const hasMore = (data?.products?.length ?? 0) > 5 && !showAll;
+
   return (
-    <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
-      <div className="max-w-3xl mx-auto">
+    <div className="h-full overflow-y-auto px-4 lg:px-6 py-5">
+      <div className="max-w-none">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -523,11 +609,11 @@ function SupplementsView() {
 
         {/* 로딩 스켈레톤 */}
         {loading && (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {[1,2,3,4,5].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
                 <div className="flex gap-3">
-                  <div className="w-12 h-12 bg-gray-200 rounded-xl flex-shrink-0" />
+                  <div className="w-14 h-14 bg-gray-200 rounded-xl flex-shrink-0" />
                   <div className="flex-1">
                     <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
                     <div className="h-3 bg-gray-100 rounded w-1/2 mb-1" />
@@ -552,72 +638,98 @@ function SupplementsView() {
           <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-3">{data.categoryInfo}</p>
         )}
 
-        {/* 제품 목록 */}
-        {!loading && data?.products && (
-          <div className="space-y-3">
-            {data.products.map((product, idx) => (
-              <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                      idx === 0 ? "bg-yellow-100 text-yellow-700" :
-                      idx === 1 ? "bg-gray-100 text-gray-600" :
-                      idx === 2 ? "bg-orange-50 text-orange-600" : "bg-gray-50 text-gray-400"
-                    }`}>
-                      #{product.rank ?? idx + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">{product.name}</p>
-                          <p className="text-xs text-gray-400">{product.brand} · {product.unit}</p>
+        {/* 제품 그리드 */}
+        {!loading && visibleProducts.length > 0 && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {visibleProducts.map((product, idx) => {
+                const rankColors = [
+                  { bg: "#fef9c3", text: "#854d0e", border: "#fde047" },  // 금 1위
+                  { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },  // 은 2위
+                  { bg: "#fff7ed", text: "#9a3412", border: "#fed7aa" },  // 동 3위
+                ];
+                const rc = rankColors[idx] ?? { bg: "#f8fafc", text: "#94a3b8", border: "#e2e8f0" };
+                return (
+                  <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-4 flex-1">
+                      <div className="flex items-start gap-3">
+                        {/* 제품 아이콘 이미지 */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl"
+                            style={{ backgroundColor: iconInfo.bg }}>
+                            {iconInfo.emoji}
+                          </div>
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black border"
+                            style={{ backgroundColor: rc.bg, color: rc.text, borderColor: rc.border }}>
+                            {product.rank ?? idx + 1}
+                          </div>
                         </div>
-                        <p className="text-sm font-bold flex-shrink-0" style={{ color: UBCARE_ORANGE }}>{product.priceRange}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-sm font-bold text-gray-900 leading-tight">{product.name}</p>
+                            <p className="text-xs font-bold flex-shrink-0 ml-1" style={{ color: UBCARE_ORANGE }}>{product.priceRange}</p>
+                          </div>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{product.brand} · {product.unit}</p>
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">{product.mainBenefit}</p>
+                          {product.tags?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {product.tags.map((tag, i) => (
+                                <span key={i} className="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-medium rounded-md">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-600 mt-1">{product.mainBenefit}</p>
-                      {product.tags?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {product.tags.map((tag, i) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-medium rounded-md">{tag}</span>
-                          ))}
+
+                      <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
+                        className="mt-3 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors">
+                        {expandedId === idx ? "▲ 닫기" : "▼ 상세 효능 보기"}
+                      </button>
+
+                      {expandedId === idx && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <p className="text-xs font-semibold text-gray-500 mb-1.5">주요 효능</p>
+                          <ul className="space-y-1">
+                            {product.benefits?.map((b, i) => (
+                              <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                <span className="mt-0.5 flex-shrink-0" style={{ color: UBCARE_ORANGE }}>•</span>{b}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
-                    className="mt-2.5 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                    {expandedId === idx ? "▲ 닫기" : "▼ 상세 효능 보기"}
-                  </button>
-
-                  {expandedId === idx && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <p className="text-xs font-semibold text-gray-500 mb-1.5">주요 효능</p>
-                      <ul className="space-y-1">
-                        {product.benefits?.map((b, i) => (
-                          <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
-                            <span className="mt-0.5 flex-shrink-0" style={{ color: UBCARE_ORANGE }}>•</span>{b}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="border-t border-gray-100 grid grid-cols-2 mt-auto">
+                      <a href={`https://www.coupang.com/np/search?q=${encodeURIComponent(product.searchKeyword)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-gray-700 hover:bg-orange-50 border-r border-gray-100 transition-colors">
+                        🛒 쿠팡
+                      </a>
+                      <a href={`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(product.searchKeyword)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-gray-700 hover:bg-green-50 transition-colors">
+                        🔍 네이버
+                      </a>
                     </div>
-                  )}
-                </div>
-                <div className="border-t border-gray-100 grid grid-cols-2">
-                  <a href={`https://www.coupang.com/np/search?q=${encodeURIComponent(product.searchKeyword)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 border-r border-gray-100 transition-colors">
-                    🛒 쿠팡 구매
-                  </a>
-                  <a href={`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(product.searchKeyword)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-                    🔍 네이버쇼핑
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 더보기 버튼 */}
+            {hasMore && (
+              <button onClick={() => setShowAll(true)}
+                className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-sm font-semibold text-gray-500 hover:border-orange-300 hover:text-orange-500 transition-all flex items-center justify-center gap-2">
+                <span>⬇</span> 더보기 — 추가 {(data?.products?.length ?? 0) - 5}개 제품 보기
+              </button>
+            )}
+            {showAll && (
+              <button onClick={() => { setShowAll(false); setExpandedId(null); }}
+                className="mt-4 w-full py-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-400 hover:bg-gray-50 transition-all">
+                ▲ 접기
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -637,8 +749,13 @@ function NewsView() {
   const [data, setData] = useState<NewsData | null>(null);
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  // 뉴스는 한 번만 로드 — ref 캐시
+  const fetched = useRef(false);
 
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
     const month = new Date().getMonth() + 1;
     fetch("/api/health-news", {
       method: "POST",
@@ -652,9 +769,11 @@ function NewsView() {
   }, []);
 
   const sc = SEASON_CONFIG[data?.season ?? "봄"] ?? SEASON_CONFIG["봄"];
+  const visibleArticles = data?.articles ? (showAll ? data.articles : data.articles.slice(0, 5)) : [];
+  const hasMore = (data?.articles?.length ?? 0) > 5 && !showAll;
 
   return (
-    <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
+    <div className="h-full overflow-y-auto px-4 lg:px-6 py-5">
       <div className="max-w-3xl mx-auto">
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
@@ -699,68 +818,84 @@ function NewsView() {
         )}
 
         {/* 기사 목록 */}
-        {!loading && data?.articles && (
-          <div className="space-y-3">
-            {data.articles.map((article, idx) => (
-              <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                      style={{ backgroundColor: article.categoryColor || UBCARE_ORANGE }}>
-                      {article.category}
-                    </span>
-                    {article.urgencyLevel === "주의" && (
-                      <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">⚠️ 주의</span>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900 mb-1 leading-snug">{article.title}</h3>
-                  <p className="text-xs text-gray-600 leading-relaxed">{article.summary}</p>
-
-                  <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
-                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                    {expandedId === idx ? "▲ 접기" : "▼ 자세히 보기"}
-                  </button>
-
-                  {expandedId === idx && (
-                    <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
-                      {article.symptoms?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-red-600 mb-1.5">⚠️ 주의 증상</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {article.symptoms.map((s, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-md font-medium">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {article.preventionTips?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-green-600 mb-1.5">✅ 예방법</p>
-                          <ul className="space-y-1">
-                            {article.preventionTips.map((tip, i) => (
-                              <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
-                                <span className="text-green-500 mt-0.5 flex-shrink-0">•</span>{tip}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {article.recommendedFoods?.length > 0 && (
-                        <div>
-                          <p className="text-xs font-semibold text-orange-600 mb-1.5">🍽️ 추천 음식</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {article.recommendedFoods.map((f, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-md font-medium">{f}</span>
-                            ))}
-                          </div>
-                        </div>
+        {!loading && visibleArticles.length > 0 && (
+          <>
+            <div className="space-y-3">
+              {visibleArticles.map((article, idx) => (
+                <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                        style={{ backgroundColor: article.categoryColor || UBCARE_ORANGE }}>
+                        {article.category}
+                      </span>
+                      {article.urgencyLevel === "주의" && (
+                        <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">⚠️ 주의</span>
                       )}
                     </div>
-                  )}
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 leading-snug">{article.title}</h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">{article.summary}</p>
+
+                    <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
+                      className="mt-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                      {expandedId === idx ? "▲ 접기" : "▼ 자세히 보기"}
+                    </button>
+
+                    {expandedId === idx && (
+                      <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                        {article.symptoms?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-red-600 mb-1.5">⚠️ 주의 증상</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {article.symptoms.map((s, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-md font-medium">{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {article.preventionTips?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-green-600 mb-1.5">✅ 예방법</p>
+                            <ul className="space-y-1">
+                              {article.preventionTips.map((tip, i) => (
+                                <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                  <span className="text-green-500 mt-0.5 flex-shrink-0">•</span>{tip}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {article.recommendedFoods?.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-orange-600 mb-1.5">🍽️ 추천 음식</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {article.recommendedFoods.map((f, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-md font-medium">{f}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            {/* 더보기 버튼 */}
+            {hasMore && (
+              <button onClick={() => setShowAll(true)}
+                className="mt-4 w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-sm font-semibold text-gray-500 hover:border-orange-300 hover:text-orange-500 transition-all flex items-center justify-center gap-2">
+                <span>⬇</span> 더보기 — 추가 {(data?.articles?.length ?? 0) - 5}개 기사 보기
+              </button>
+            )}
+            {showAll && (
+              <button onClick={() => { setShowAll(false); setExpandedId(null); }}
+                className="mt-4 w-full py-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-400 hover:bg-gray-50 transition-all">
+                ▲ 접기
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -769,28 +904,58 @@ function NewsView() {
 
 // ─── 메뉴 패널 ───────────────────────────────────────────
 function MenuPanel({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<"guide" | "info">("guide");
+  const [tab, setTab] = useState<"guide" | "updates" | "info" | "feedback">("guide");
   const [openGuide, setOpenGuide] = useState<number | null>(0);
+  const [fbTitle, setFbTitle] = useState("");
+  const [fbBody, setFbBody] = useState("");
+  const [fbSent, setFbSent] = useState(false);
+
+  const handleFeedbackSubmit = () => {
+    if (!fbTitle.trim() || !fbBody.trim()) return;
+    const subject = encodeURIComponent(`[MediVibe 불만접수] ${fbTitle}`);
+    const body = encodeURIComponent(`${fbBody}\n\n---\n앱 버전: ${APP_VERSION}\n접수일: ${new Date().toLocaleDateString("ko-KR")}`);
+    window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
+    setFbSent(true);
+  };
+
+  const TABS = [
+    { key: "guide", label: "기능 안내" },
+    { key: "updates", label: "업데이트" },
+    { key: "info", label: "앱 정보" },
+    { key: "feedback", label: "불만 접수" },
+  ] as const;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white w-full max-w-xs lg:max-w-sm h-full flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: UBCARE_ORANGE }}>
-          <span className="font-bold text-white text-sm">메뉴</span>
+          <div className="flex items-center gap-2">
+            <Image src="/ubcare-logo.png" alt="UBcare" width={60} height={18} className="object-contain brightness-0 invert" />
+            <span className="font-bold text-white text-sm">MediVibe AI</span>
+          </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white text-xl">×</button>
         </div>
-        <div className="flex border-b border-gray-200">
-          {[{ key: "guide", label: "기능 안내" }, { key: "info", label: "앱 정보" }].map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key as "guide" | "info")}
-              className={`flex-1 py-2.5 text-xs font-semibold border-b-2 transition-colors ${tab === t.key ? "" : "border-transparent text-gray-500"}`}
+
+        {/* 탭 */}
+        <div className="flex border-b border-gray-200 bg-white flex-shrink-0 overflow-x-auto">
+          {TABS.map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={`flex-1 py-2.5 text-[11px] font-semibold border-b-2 transition-colors whitespace-nowrap px-1 ${tab === t.key ? "" : "border-transparent text-gray-500 hover:text-gray-700"}`}
               style={tab === t.key ? { borderBottomColor: UBCARE_ORANGE, color: UBCARE_ORANGE } : {}}>
               {t.label}
             </button>
           ))}
         </div>
+
+        {/* 콘텐츠 */}
         <div className="flex-1 overflow-y-auto">
+
+          {/* ── 기능 안내 ── */}
           {tab === "guide" && (
             <div className="p-4 space-y-2">
+              <p className="text-xs text-gray-500 mb-3">각 기능의 사용 방법을 확인하세요.</p>
               {FEATURE_GUIDE.map((g, i) => (
                 <div key={i} className="border border-gray-200 rounded-xl overflow-hidden">
                   <button onClick={() => setOpenGuide(openGuide === i ? null : i)}
@@ -814,30 +979,68 @@ function MenuPanel({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           )}
+
+          {/* ── 업데이트 내역 ── */}
+          {tab === "updates" && (
+            <div className="p-4 space-y-4">
+              <p className="text-xs text-gray-500">MediVibe AI의 기능 업데이트 내역입니다.</p>
+              {UPDATE_HISTORY.map((rel, i) => (
+                <div key={i} className={`rounded-xl border overflow-hidden ${i === 0 ? "border-orange-200" : "border-gray-200"}`}>
+                  <div className={`flex items-center justify-between px-4 py-2.5 ${i === 0 ? "bg-orange-50" : "bg-gray-50"}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold text-sm font-mono ${i === 0 ? "" : "text-gray-700"}`} style={i === 0 ? { color: UBCARE_ORANGE } : {}}>
+                        {rel.version}
+                      </span>
+                      {rel.badge && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: rel.badgeColor ?? UBCARE_ORANGE }}>
+                          {rel.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-mono">{rel.date}</span>
+                  </div>
+                  <ul className="px-4 py-3 space-y-1.5 bg-white">
+                    {rel.items.map((item, j) => (
+                      <li key={j} className="flex items-start gap-2 text-xs text-gray-700">
+                        <span className="mt-0.5 flex-shrink-0" style={{ color: UBCARE_ORANGE }}>•</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── 앱 정보 ── */}
           {tab === "info" && (
             <div className="p-4 space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
                 <p className="text-xs font-bold text-orange-700 mb-1">⚠️ 해커톤 시연용</p>
-                <p className="text-xs text-orange-600">본 서비스는 유비케어 IT개발본부 해커톤 시연용 프로토타입이며, 실제 서비스가 아닙니다.</p>
+                <p className="text-xs text-orange-600">본 서비스는 유비케어 IT개발본부 해커톤 시연용 프로토타입입니다. 실제 의료 서비스가 아닙니다.</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Image src="/ubcare-logo.png" alt="UBcare" width={80} height={24} className="object-contain" />
-                  <div><p className="text-sm font-bold text-gray-900">MediVibe AI</p><p className="text-xs text-gray-500">AI 의료 정보 도우미</p></div>
+                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
+                  <Image src="/ubcare-logo.png" alt="UBcare" width={72} height={22} className="object-contain" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">MediVibe AI</p>
+                    <p className="text-xs text-gray-500">AI 기반 의료 정보 도우미</p>
+                  </div>
                 </div>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div className="flex justify-between"><span className="text-gray-400">버전</span><span className="font-mono font-semibold">{APP_VERSION}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-400">빌드</span><span className="font-mono">{BUILD_DATE}</span></div>
+                <div className="space-y-1.5 text-xs text-gray-600">
+                  <div className="flex justify-between"><span className="text-gray-400">버전</span><span className="font-mono font-bold" style={{ color: UBCARE_ORANGE }}>{APP_VERSION}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">빌드 날짜</span><span className="font-mono">{BUILD_DATE}</span></div>
                   <div className="flex justify-between"><span className="text-gray-400">AI 모델</span><span className="font-mono">claude-haiku-4-5</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">개발팀</span><span>유비케어 IT개발본부</span></div>
                 </div>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <p className="text-sm font-bold text-gray-900 mb-3">🛠️ 기술 스택</p>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {TECH_STACK.map((stack) => (
                     <div key={stack.category}>
-                      <p className="text-xs font-semibold text-gray-500 mb-1">{stack.category}</p>
-                      <div className="flex flex-wrap gap-1.5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{stack.category}</p>
+                      <div className="flex flex-wrap gap-1">
                         {stack.items.map((item) => (
                           <span key={item} className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">{item}</span>
                         ))}
@@ -846,17 +1049,70 @@ function MenuPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <p className="text-sm font-bold text-gray-900 mb-2">📄 웹사이트 정보</p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p><span className="font-semibold">서비스명:</span> MediVibe AI</p>
-                  <p><span className="font-semibold">개발:</span> 유비케어 IT개발본부</p>
-                  <p><span className="font-semibold">버전:</span> {APP_VERSION} ({BUILD_DATE})</p>
-                </div>
-                <div className="pt-2 mt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-400">Copyright © UBcare Co., Ltd. All rights reserved.</p>
-                </div>
+              <div className="rounded-xl border border-gray-200 p-4 text-center">
+                <p className="text-xs text-gray-400">Copyright © 2026 UBcare Co., Ltd.</p>
+                <p className="text-xs text-gray-400">All rights reserved.</p>
               </div>
+            </div>
+          )}
+
+          {/* ── 불만 접수 ── */}
+          {tab === "feedback" && (
+            <div className="p-4 space-y-4">
+              {fbSent ? (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                  <div className="text-3xl mb-2">✅</div>
+                  <p className="text-sm font-bold text-green-700 mb-1">접수 완료</p>
+                  <p className="text-xs text-green-600">메일 앱이 열립니다. 전송 후 접수가 완료됩니다.</p>
+                  <button onClick={() => { setFbSent(false); setFbTitle(""); setFbBody(""); }}
+                    className="mt-4 px-4 py-2 text-xs font-semibold rounded-lg text-white"
+                    style={{ backgroundColor: UBCARE_ORANGE }}>
+                    새 접수하기
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                    <p className="text-xs font-bold text-blue-700 mb-0.5">📬 불만 및 개선 요청</p>
+                    <p className="text-xs text-blue-600">접수 내용은 <span className="font-semibold">{FEEDBACK_EMAIL}</span>로 전달됩니다.</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">제목 <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        value={fbTitle}
+                        onChange={(e) => setFbTitle(e.target.value)}
+                        placeholder="불만/개선 사항을 간단히 요약해주세요"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:border-transparent"
+                        style={{ "--tw-ring-color": UBCARE_ORANGE } as React.CSSProperties}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">내용 <span className="text-red-500">*</span></label>
+                      <textarea
+                        value={fbBody}
+                        onChange={(e) => setFbBody(e.target.value)}
+                        placeholder="불만 사항, 버그, 개선 요청 등 자세히 작성해주세요."
+                        rows={6}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:ring-2 focus:border-transparent"
+                        style={{ "--tw-ring-color": UBCARE_ORANGE } as React.CSSProperties}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] text-gray-400">· 접수 버튼 클릭 시 기본 메일 앱이 열립니다.</p>
+                      <p className="text-[10px] text-gray-400">· 개인정보 포함 내용은 작성하지 마세요.</p>
+                    </div>
+                    <button
+                      onClick={handleFeedbackSubmit}
+                      disabled={!fbTitle.trim() || !fbBody.trim()}
+                      className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-40"
+                      style={{ backgroundColor: UBCARE_ORANGE }}>
+                      📨 불만 접수하기
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

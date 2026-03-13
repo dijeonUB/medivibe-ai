@@ -28,18 +28,18 @@ const SYSTEM_PROMPT = `당신은 건강기능식품 전문가입니다.
 - priceLow: 가격 낮은 순 (10,000~20,000원대 제품 우선)
 - priceHigh: 프리미엄·고가 순 (30,000원 이상 고품질 제품 우선)
 
-5개 제품을 추천하세요. GC녹십자, 종근당건강, 일동제약, 유한양행, CJ웰케어 등 국내 유명 제약·건강기능식품 브랜드 중심으로 추천하세요.`;
+10개 제품을 추천하세요. GC녹십자, 종근당건강, 일동제약, 유한양행, CJ웰케어, 뉴트리코어, 네이처메이드, 솔가, 한미약품, 동아제약 등 국내외 유명 제약·건강기능식품 브랜드 중심으로 추천하세요.`;
 
 export async function POST(req: Request) {
   try {
     const { category, sortBy } = await req.json();
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
+      max_tokens: 3500,
       system: SYSTEM_PROMPT,
       messages: [{
         role: "user",
-        content: `카테고리: ${category}, 정렬: ${sortBy}. 건강기능식품 5개를 추천해주세요.`,
+        content: `카테고리: ${category}, 정렬: ${sortBy}. 건강기능식품 10개를 추천해주세요.`,
       }],
     });
     const text = response.content[0].type === "text" ? response.content[0].text : "";
