@@ -376,13 +376,18 @@ function Calendar({ sessions, selectedDate, onSelectDate, onViewMonthChange }: {
   onViewMonthChange?: (year: number, month: number) => void;
 }) {
   const [viewDate, setViewDate] = useState(new Date());
-  const recordDates = new Set(sessions.map((s) => s.date));
   const year = viewDate.getFullYear(); const month = viewDate.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
   const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
   const toDateStr = (day: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  // 날짜별 세션 맵: { "2026-03-13": [session, ...] }
+  const dateMap = sessions.reduce<Record<string, HealthSession[]>>((acc, s) => {
+    acc[s.date] = [...(acc[s.date] ?? []), s];
+    return acc;
+  }, {});
 
   const changeMonth = (delta: number) => {
     const next = new Date(year, month + delta, 1);
@@ -392,34 +397,85 @@ function Calendar({ sessions, selectedDate, onSelectDate, onViewMonthChange }: {
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <button onClick={() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 font-bold">‹</button>
-        <span className="font-bold text-gray-900 text-sm">{year}년 {month + 1}월</span>
-        <button onClick={() => changeMonth(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 font-bold">›</button>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <button onClick={() => changeMonth(-1)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-lg font-bold transition-colors">‹</button>
+        <span className="font-bold text-gray-900">{year}년 {month + 1}월</span>
+        <button onClick={() => changeMonth(1)} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 text-lg font-bold transition-colors">›</button>
       </div>
-      <div className="grid grid-cols-7 text-center py-2 border-b border-gray-100">
+      {/* 요일 헤더 */}
+      <div className="grid grid-cols-7 text-center py-2.5 border-b border-gray-100 bg-gray-50">
         {["일","월","화","수","목","금","토"].map((d, i) => (
-          <span key={d} className={`text-xs font-semibold ${i===0?"text-red-400":i===6?"text-blue-400":"text-gray-500"}`}>{d}</span>
+          <span key={d} className={`text-xs font-bold ${i===0?"text-red-400":i===6?"text-blue-400":"text-gray-500"}`}>{d}</span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px p-2">
+      {/* 날짜 셀 */}
+      <div className="grid grid-cols-7 p-2 gap-1">
         {cells.map((day, idx) => {
-          if (!day) return <div key={`e-${idx}`} />;
+          if (!day) return <div key={`e-${idx}`} className="h-16" />;
           const dateStr = toDateStr(day);
-          const hasRecord = recordDates.has(dateStr);
+          const daySessions = dateMap[dateStr] ?? [];
+          const count = daySessions.length;
+          const hasRecord = count > 0;
           const isSelected = selectedDate === dateStr;
           const isToday = dateStr === todayStr();
+          // 가장 최근 세션의 진료과
+          const dept = daySessions[0]?.symptomData?.department;
+          const weekday = new Date(dateStr).getDay();
           return (
-            <button key={dateStr} onClick={() => hasRecord && onSelectDate(dateStr)}
-              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl transition-all ${hasRecord ? "cursor-pointer hover:bg-orange-50" : "cursor-default"}`}
-              style={isSelected ? { backgroundColor: UBCARE_ORANGE, color: "white" } : isToday ? { border: `1.5px solid ${UBCARE_ORANGE}`, color: UBCARE_ORANGE } : {}}>
-              <span className={`text-sm ${isSelected ? "font-bold text-white" : isToday ? "font-bold" : hasRecord ? "font-bold text-gray-900" : "font-medium text-gray-500"}`}>
+            <button key={dateStr}
+              onClick={() => hasRecord && onSelectDate(dateStr)}
+              className={`h-16 w-full flex flex-col items-center justify-start pt-1.5 rounded-xl transition-all overflow-hidden ${
+                hasRecord ? "cursor-pointer hover:scale-105" : "cursor-default"
+              }`}
+              style={
+                isSelected
+                  ? { backgroundColor: UBCARE_ORANGE }
+                  : isToday
+                  ? { border: `2px solid ${UBCARE_ORANGE}` }
+                  : hasRecord
+                  ? { backgroundColor: "#fff7f0", border: `1px solid #fed7aa` }
+                  : {}
+              }>
+              {/* 날짜 숫자 */}
+              <span className={`text-sm leading-none font-bold ${
+                isSelected ? "text-white" :
+                isToday ? "" :
+                weekday === 0 ? "text-red-500" :
+                weekday === 6 ? "text-blue-500" :
+                hasRecord ? "text-gray-900" : "text-gray-400"
+              }`} style={isToday && !isSelected ? { color: UBCARE_ORANGE } : {}}>
                 {day}
               </span>
-              {hasRecord && <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? "white" : UBCARE_ORANGE }} />}
+              {/* 건수 뱃지 */}
+              {hasRecord && (
+                <span className={`mt-0.5 text-[10px] font-bold leading-none ${isSelected ? "text-orange-100" : ""}`}
+                  style={!isSelected ? { color: UBCARE_ORANGE } : {}}>
+                  {count}건
+                </span>
+              )}
+              {/* 추천과 */}
+              {dept && (
+                <span className={`mt-0.5 px-1 text-[9px] font-semibold leading-tight text-center truncate w-full ${
+                  isSelected ? "text-white/80" : "text-gray-500"
+                }`}>
+                  {dept.length > 4 ? dept.slice(0, 4) : dept}
+                </span>
+              )}
             </button>
           );
         })}
+      </div>
+      {/* 범례 */}
+      <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50 flex items-center gap-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "#fff7f0", border: "1px solid #fed7aa" }} />
+          <span className="text-[10px] text-gray-500">상담 기록 있음</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: UBCARE_ORANGE }} />
+          <span className="text-[10px] text-gray-500">선택된 날짜</span>
+        </div>
       </div>
     </div>
   );
@@ -1383,10 +1439,6 @@ export default function Home() {
 
       <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex-shrink-0">
         <div className="flex gap-2 items-end max-w-4xl mx-auto">
-          <button onClick={startNewChat}
-            className="flex-shrink-0 w-9 h-9 rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 hover:border-orange-300 hover:text-orange-500 flex items-center justify-center transition-colors" title="새 대화 시작">
-            <EditIcon className="w-4 h-4" />
-          </button>
           <textarea value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
@@ -1415,83 +1467,105 @@ export default function Home() {
 
   // ── 건강기록 영역 ────────────────────────────────────
   const RecordsArea = (
-    <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
-            나의 건강 기록
-          </h2>
-          {sessions.length > 0 && (
-            <div className="flex gap-3">
-              <button onClick={handleDeleteMonth} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
-                <TrashIcon className="w-3.5 h-3.5" />이번 달 삭제
-              </button>
-              <button onClick={handleDeleteAll} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
-                <TrashIcon className="w-3.5 h-3.5" />전체 삭제
-              </button>
-            </div>
-          )}
+    <div className="h-full overflow-hidden flex flex-col">
+      {/* 상단 헤더 */}
+      <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <CalendarIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
+          나의 건강 기록
+        </h2>
+        {sessions.length > 0 && (
+          <div className="flex gap-3">
+            <button onClick={handleDeleteMonth} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
+              <TrashIcon className="w-3.5 h-3.5" />이번 달 삭제
+            </button>
+            <button onClick={handleDeleteAll} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
+              <TrashIcon className="w-3.5 h-3.5" />전체 삭제
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 메인 레이아웃: 좌측 캘린더 고정 + 우측 검색/리스트 */}
+      <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+
+        {/* ── 좌측: 캘린더 (항상 표시) ── */}
+        <div className="lg:w-[360px] xl:w-[400px] flex-shrink-0 overflow-y-auto px-4 pt-4 pb-4 lg:border-r border-gray-200 bg-white">
+          <Calendar
+            sessions={sessions}
+            selectedDate={selectedDate}
+            onSelectDate={(d) => { setSelectedDate(d); setSelectedSession(null); setSearchQuery(""); }}
+            onViewMonthChange={(y, m) => setCalendarMonth({ year: y, month: m })}
+          />
+          {/* 모바일용 구분선 */}
+          <div className="lg:hidden mt-4 border-t border-gray-200" />
         </div>
 
-        {/* 검색창 */}
-        <div className="relative mb-4">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="증상, 진료과, 키워드로 검색..."
-            className="w-full pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent shadow-sm" />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
-          )}
-        </div>
-
-        {trimmedQuery ? (
-          <div>
-            <p className="text-xs text-gray-500 mb-3 font-medium">&ldquo;{trimmedQuery}&rdquo; 검색 결과 ({displaySessions.length}건)</p>
-            {displaySessions.length === 0 ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                <SearchIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">검색 결과가 없습니다.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {displaySessions.map((s) => (
-                  <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
-                ))}
-              </div>
+        {/* ── 우측: 검색 + 기록 목록 ── */}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4">
+          {/* 검색창 */}
+          <div className="relative mb-3">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="증상, 진료과, 키워드로 검색..."
+              className="w-full pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent shadow-sm"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
             )}
           </div>
-        ) : (
-          <div className="grid lg:grid-cols-2 gap-5">
+
+          {/* 결과 영역 */}
+          {trimmedQuery ? (
             <div>
-              <Calendar sessions={sessions} selectedDate={selectedDate}
-                onSelectDate={(d) => { setSelectedDate(d); setSelectedSession(null); }}
-                onViewMonthChange={(y, m) => setCalendarMonth({ year: y, month: m })} />
-            </div>
-            <div>
-              {selectedDate && (
-                <>
-                  <p className="text-xs text-gray-500 mb-2 font-medium">{selectedDate.replace(/-/g, ".")} 상담 기록 ({displaySessions.length}건)</p>
-                  {displaySessions.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-400">이 날의 상담 기록이 없습니다.</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {displaySessions.map((s) => (
-                        <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-              {sessions.length === 0 && (
+              <p className="text-xs text-gray-500 mb-3 font-medium">&ldquo;{trimmedQuery}&rdquo; 검색 결과 ({displaySessions.length}건)</p>
+              {displaySessions.length === 0 ? (
                 <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                  <CalendarIcon className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500">아직 상담 기록이 없습니다.<br />AI 상담을 시작해보세요.</p>
+                  <SearchIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">검색 결과가 없습니다.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {displaySessions.map((s) => (
+                    <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          ) : selectedDate ? (
+            <div>
+              <p className="text-xs text-gray-500 mb-3 font-medium">
+                {selectedDate.replace(/-/g, ".")} 상담 기록 ({displaySessions.length}건)
+              </p>
+              {displaySessions.length === 0 ? (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-400">이 날의 상담 기록이 없습니다.</div>
+              ) : (
+                <div className="space-y-2">
+                  {displaySessions.map((s) => (
+                    <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+              {sessions.length === 0 ? (
+                <>
+                  <CalendarIcon className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">아직 상담 기록이 없습니다.<br />AI 상담을 시작해보세요.</p>
+                </>
+              ) : (
+                <>
+                  <CalendarIcon className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">날짜를 선택하거나<br />키워드로 검색해보세요.</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1502,7 +1576,7 @@ export default function Home() {
       <aside className="hidden lg:flex flex-col w-56 xl:w-64 bg-white border-r border-gray-200 flex-shrink-0">
         <div className="px-5 py-5 border-b border-gray-100 flex flex-col items-center">
           <Image src="/ubcare-logo.png" alt="UBcare" width={110} height={32} className="object-contain" />
-          <p className="text-xs text-gray-500 mt-1.5">AI 의료 도우미</p>
+          <p className="text-[11px] font-medium tracking-wide mt-1.5" style={{ color: UBCARE_ORANGE }}>Your Health Intelligence</p>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
