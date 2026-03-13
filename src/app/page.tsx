@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── 타입 ────────────────────────────────────────────────
+type ViewType = "chat" | "records" | "supplements" | "news";
+
 interface SymptomData {
   department: string;
   urgency: "일반" | "주의" | "응급";
@@ -22,6 +24,37 @@ interface HealthSession {
   title: string;
   messages: Message[];
   symptomData?: SymptomData;
+}
+interface SupplementProduct {
+  rank: number;
+  name: string;
+  brand: string;
+  mainBenefit: string;
+  benefits: string[];
+  priceRange: string;
+  unit: string;
+  searchKeyword: string;
+  tags: string[];
+}
+interface SupplementsData {
+  products: SupplementProduct[];
+  categoryInfo: string;
+}
+interface NewsArticle {
+  id: number;
+  category: string;
+  categoryColor: string;
+  title: string;
+  summary: string;
+  symptoms: string[];
+  preventionTips: string[];
+  recommendedFoods: string[];
+  urgencyLevel: string;
+}
+interface NewsData {
+  season: string;
+  weatherAlert: string;
+  articles: NewsArticle[];
 }
 
 // ─── 상수 ────────────────────────────────────────────────
@@ -50,41 +83,7 @@ const TECH_STACK = [
   { category: "백엔드", items: ["Next.js API Routes (서버리스)", "Edge Runtime 스트리밍"] },
   { category: "데이터", items: ["localStorage (건강기록 저장)", "JSON 구조화 데이터"] },
   { category: "배포", items: ["Vercel (정적/서버리스 하이브리드)"] },
-  { category: "개발 방법론", items: ["AI-Native 개발 (Vibe Coding)", "Claude Code CLI", "PRD → ROADMAP → Sprint 워크플로우"] },
-];
-
-const FEATURE_GUIDE = [
-  {
-    icon: <PulseIcon className="w-4 h-4" />,
-    title: "AI 건강 상담",
-    steps: [
-      "증상이나 궁금한 건강 정보를 자유롭게 입력하세요.",
-      "AI가 의료 정보를 쉬운 말로 설명해드립니다.",
-      "증상 입력 시 진료과를 자동으로 추천합니다.",
-      "카카오맵·네이버지도로 근처 병원을 즉시 검색할 수 있습니다.",
-      "네이버 예약으로 진료 예약까지 바로 연결됩니다.",
-      "응급 상황 판단 시 119 전화 버튼이 표시됩니다.",
-    ],
-  },
-  {
-    icon: <CalendarIcon className="w-4 h-4" />,
-    title: "건강기록 캘린더",
-    steps: [
-      "모든 상담 내용이 자동으로 저장됩니다.",
-      "캘린더에서 상담한 날짜를 한눈에 확인하세요 (주황 점 표시).",
-      "날짜를 클릭하면 해당일의 상담 내용을 볼 수 있습니다.",
-      "키워드로 상담 기록을 검색할 수 있습니다.",
-      "기록은 개별/월별/전체 삭제 가능합니다.",
-    ],
-  },
-  {
-    icon: <EditIcon className="w-4 h-4" />,
-    title: "새 대화 시작",
-    steps: [
-      "입력창 왼쪽의 편집 버튼을 누르면 새 대화를 시작합니다.",
-      "이전 대화는 건강기록에 자동 저장되어 언제든 다시 볼 수 있습니다.",
-    ],
-  },
+  { category: "개발 방법론", items: ["AI-Native 개발 (Vibe Coding)", "Claude Code CLI"] },
 ];
 
 // ─── SVG 아이콘 ──────────────────────────────────────────
@@ -101,8 +100,23 @@ function CalendarIcon({ className, style }: IconProps) {
   return (
     <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="4" width="18" height="18" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-      <path d="M9 16l2 2 4-4" />
+      <path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4" />
+    </svg>
+  );
+}
+function PillIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+      <path d="m8.5 8.5 7 7" />
+    </svg>
+  );
+}
+function NewsIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8" />
     </svg>
   );
 }
@@ -119,8 +133,7 @@ function TrashIcon({ className, style }: IconProps) {
     <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   );
 }
@@ -132,6 +145,55 @@ function SearchIcon({ className, style }: IconProps) {
     </svg>
   );
 }
+function ReplyIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 17 4 12 9 7" />
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
+}
+
+// ─── 기능 가이드 (아이콘 컴포넌트 정의 이후) ──────────────
+const FEATURE_GUIDE = [
+  {
+    icon: <PulseIcon className="w-4 h-4" />,
+    title: "AI 건강 상담",
+    steps: [
+      "증상이나 건강 질문을 자유롭게 입력하세요.",
+      "AI가 진료과를 자동으로 추천하고 병원 찾기까지 연결해드립니다.",
+      "✏️ 버튼으로 새 대화를 시작하면 기존 대화는 기록에 저장됩니다.",
+    ],
+  },
+  {
+    icon: <CalendarIcon className="w-4 h-4" />,
+    title: "건강기록",
+    steps: [
+      "캘린더에서 상담 날짜를 확인하고 과거 기록을 조회하세요.",
+      "키워드로 상담 기록을 검색할 수 있습니다.",
+      "'이어서 상담' 버튼으로 이전 대화를 이어갈 수 있습니다.",
+      "개별/월별/전체 삭제 기능을 지원합니다.",
+    ],
+  },
+  {
+    icon: <PillIcon className="w-4 h-4" />,
+    title: "건강식품 추천",
+    steps: [
+      "카테고리(면역력, 피로회복 등)를 선택하세요.",
+      "인기순·가격순으로 정렬해 볼 수 있습니다.",
+      "쿠팡·네이버쇼핑 버튼으로 바로 구매 연결됩니다.",
+    ],
+  },
+  {
+    icon: <NewsIcon className="w-4 h-4" />,
+    title: "건강뉴스",
+    steps: [
+      "현재 계절에 맞는 건강 정보를 자동으로 제공합니다.",
+      "계절병·미세먼지·영양관리 등 다양한 카테고리를 확인하세요.",
+      "예방법, 추천 음식까지 상세 정보를 볼 수 있습니다.",
+    ],
+  },
+];
 
 // ─── 유틸 ────────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().split("T")[0]; }
@@ -147,7 +209,6 @@ function parseSymptomData(text: string): { clean: string; symptomData?: SymptomD
   } catch { return { clean: text.replace(/\[SYMPTOM_DATA\][\s\S]*?\[\/SYMPTOM_DATA\]/g, "").trim() }; }
 }
 
-// 세션 타이틀 자동 생성 (증상 기반 요약)
 function generateSessionTitle(msgs: Message[], symptomData?: SymptomData): string {
   if (symptomData) {
     const dept = symptomData.department;
@@ -197,24 +258,17 @@ function ConfirmDialog({ message, onConfirm, onCancel }: {
           <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
             <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
+              <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </div>
           <div>
             <h3 className="font-bold text-gray-900 text-sm mb-1">삭제 확인</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">{message}</p>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{message}</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
-            취소
-          </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-semibold text-white transition-colors">
-            삭제하기
-          </button>
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">취소</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-semibold text-white transition-colors">삭제하기</button>
         </div>
       </div>
     </div>
@@ -248,8 +302,7 @@ function HospitalCard({ data }: { data: SymptomData }) {
           📅 네이버 예약
         </a>
         {data.urgency === "응급" && (
-          <a href="tel:119"
-            className="flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors col-span-2">
+          <a href="tel:119" className="flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors col-span-2">
             🚨 119 응급 신고
           </a>
         )}
@@ -301,20 +354,414 @@ function Calendar({ sessions, selectedDate, onSelectDate, onViewMonthChange }: {
           const isToday = dateStr === todayStr();
           return (
             <button key={dateStr} onClick={() => hasRecord && onSelectDate(dateStr)}
-              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl transition-all ${
-                hasRecord ? "cursor-pointer hover:bg-orange-50" : "cursor-default"
-              }`}
+              className={`relative aspect-square flex flex-col items-center justify-center rounded-xl transition-all ${hasRecord ? "cursor-pointer hover:bg-orange-50" : "cursor-default"}`}
               style={isSelected ? { backgroundColor: UBCARE_ORANGE, color: "white" } : isToday ? { border: `1.5px solid ${UBCARE_ORANGE}`, color: UBCARE_ORANGE } : {}}>
               <span className={`text-sm ${isSelected ? "font-bold text-white" : isToday ? "font-bold" : hasRecord ? "font-bold text-gray-900" : "font-medium text-gray-500"}`}>
                 {day}
               </span>
-              {hasRecord && (
-                <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: isSelected ? "white" : UBCARE_ORANGE }} />
-              )}
+              {hasRecord && <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isSelected ? "white" : UBCARE_ORANGE }} />}
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ─── 세션 카드 ────────────────────────────────────────────
+function SessionCard({ s, selectedSession, setSelectedSession, onDelete, onContinue }: {
+  s: HealthSession;
+  selectedSession: HealthSession | null;
+  setSelectedSession: (s: HealthSession | null) => void;
+  onDelete: (id: string) => void;
+  onContinue: (s: HealthSession) => void;
+}) {
+  const isOpen = selectedSession?.id === s.id;
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:border-orange-200 transition-colors">
+      <div className="p-4">
+        <div className="flex items-start gap-2">
+          <button onClick={() => setSelectedSession(isOpen ? null : s)} className="flex-1 min-w-0 text-left">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 leading-snug">{s.title}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {new Date(s.createdAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                  {" · "}{s.date.replace(/-/g, ".")}{" · "}메시지 {s.messages.length}개
+                </p>
+              </div>
+              {s.symptomData && (
+                <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${URGENCY_STYLE[s.symptomData.urgency]?.bg} ${URGENCY_STYLE[s.symptomData.urgency]?.text} ${URGENCY_STYLE[s.symptomData.urgency]?.border}`}>
+                  {URGENCY_STYLE[s.symptomData.urgency]?.icon} {s.symptomData.department}
+                </span>
+              )}
+            </div>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
+            className="flex-shrink-0 w-7 h-7 rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-400 flex items-center justify-center transition-colors" title="삭제">
+            <TrashIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
+          {s.messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === "user" ? "text-white" : "bg-white border border-gray-200 text-gray-800"}`}
+                style={msg.role === "user" ? { backgroundColor: UBCARE_ORANGE } : {}}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {/* 병원 검색 + 이어서 상담 버튼 */}
+          <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-2 items-center">
+            {s.symptomData && (
+              <>
+                <a href={`https://map.kakao.com/?q=${encodeURIComponent(s.symptomData.searchKeyword)}`} target="_blank" rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-400 text-gray-900">🗺️ 카카오맵</a>
+                <a href={`https://map.naver.com/v5/search/${encodeURIComponent(s.symptomData.searchKeyword)}`} target="_blank" rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500 text-white">🗺️ 네이버지도</a>
+              </>
+            )}
+            {/* 이어서 상담 버튼 */}
+            <button onClick={() => onContinue(s)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition-colors hover:opacity-80"
+              style={{ borderColor: UBCARE_ORANGE, color: UBCARE_ORANGE, backgroundColor: "#fff7f0" }}>
+              <ReplyIcon className="w-3 h-3" />
+              이어서 상담
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 건강식품 추천 뷰 ─────────────────────────────────────
+const SUPP_CATEGORIES = [
+  { id: "면역력", emoji: "🛡️" }, { id: "피로회복", emoji: "⚡" },
+  { id: "관절건강", emoji: "🦴" }, { id: "눈건강", emoji: "👁️" },
+  { id: "소화건강", emoji: "🌿" }, { id: "수면개선", emoji: "😴" },
+  { id: "피부건강", emoji: "✨" }, { id: "다이어트", emoji: "💪" },
+];
+const SORT_OPTIONS = [
+  { value: "popular", label: "인기순" },
+  { value: "priceLow", label: "가격낮은순" },
+  { value: "priceHigh", label: "가격높은순" },
+];
+
+function SupplementsView() {
+  const [category, setCategory] = useState("면역력");
+  const [sortBy, setSortBy] = useState("popular");
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<SupplementsData | null>(null);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const fetchSupplements = useCallback(async (cat: string, sort: string) => {
+    setLoading(true); setError(""); setExpandedId(null);
+    try {
+      const res = await fetch("/api/supplements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: cat, sortBy: sort }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setData(json);
+    } catch { setError("추천 목록을 불러오는 중 오류가 발생했습니다."); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchSupplements(category, sortBy); }, [category, sortBy, fetchSupplements]);
+
+  return (
+    <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
+      <div className="max-w-3xl mx-auto">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <PillIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
+            건강식품 추천
+          </h2>
+          <span className="flex items-center gap-1 px-2.5 py-1 bg-orange-50 rounded-full text-xs font-semibold" style={{ color: UBCARE_ORANGE }}>
+            🤖 AI 큐레이션
+          </span>
+        </div>
+
+        {/* 카테고리 */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {SUPP_CATEGORIES.map((cat) => (
+            <button key={cat.id} onClick={() => setCategory(cat.id)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                category === cat.id ? "text-white shadow-sm" : "bg-white border border-gray-200 text-gray-600 hover:border-orange-300"
+              }`}
+              style={category === cat.id ? { backgroundColor: UBCARE_ORANGE } : {}}>
+              <span>{cat.emoji}</span>{cat.id}
+            </button>
+          ))}
+        </div>
+
+        {/* 정렬 */}
+        <div className="flex items-center gap-2 mb-3">
+          {SORT_OPTIONS.map((opt) => (
+            <button key={opt.value} onClick={() => setSortBy(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                sortBy === opt.value ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 면책 고지 */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 mb-4 flex items-start gap-2">
+          <span className="text-blue-400 text-xs mt-0.5">ℹ️</span>
+          <p className="text-xs text-blue-600">AI가 제공하는 참고용 정보입니다. 실제 가격·순위는 각 쇼핑몰에서 확인하세요.</p>
+        </div>
+
+        {/* 로딩 스켈레톤 */}
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3,4,5].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+                <div className="flex gap-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded-xl flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2 mb-1" />
+                    <div className="h-3 bg-gray-100 rounded w-3/4" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 오류 */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <p className="text-sm text-red-600 mb-2">{error}</p>
+            <button onClick={() => fetchSupplements(category, sortBy)} className="text-xs text-red-500 underline">다시 시도</button>
+          </div>
+        )}
+
+        {/* 카테고리 설명 */}
+        {!loading && data?.categoryInfo && (
+          <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mb-3">{data.categoryInfo}</p>
+        )}
+
+        {/* 제품 목록 */}
+        {!loading && data?.products && (
+          <div className="space-y-3">
+            {data.products.map((product, idx) => (
+              <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                      idx === 0 ? "bg-yellow-100 text-yellow-700" :
+                      idx === 1 ? "bg-gray-100 text-gray-600" :
+                      idx === 2 ? "bg-orange-50 text-orange-600" : "bg-gray-50 text-gray-400"
+                    }`}>
+                      #{product.rank ?? idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-gray-900">{product.name}</p>
+                          <p className="text-xs text-gray-400">{product.brand} · {product.unit}</p>
+                        </div>
+                        <p className="text-sm font-bold flex-shrink-0" style={{ color: UBCARE_ORANGE }}>{product.priceRange}</p>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">{product.mainBenefit}</p>
+                      {product.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {product.tags.map((tag, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-medium rounded-md">{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
+                    className="mt-2.5 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    {expandedId === idx ? "▲ 닫기" : "▼ 상세 효능 보기"}
+                  </button>
+
+                  {expandedId === idx && (
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 mb-1.5">주요 효능</p>
+                      <ul className="space-y-1">
+                        {product.benefits?.map((b, i) => (
+                          <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                            <span className="mt-0.5 flex-shrink-0" style={{ color: UBCARE_ORANGE }}>•</span>{b}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-gray-100 grid grid-cols-2">
+                  <a href={`https://www.coupang.com/np/search?q=${encodeURIComponent(product.searchKeyword)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 border-r border-gray-100 transition-colors">
+                    🛒 쿠팡 구매
+                  </a>
+                  <a href={`https://search.shopping.naver.com/search/all?query=${encodeURIComponent(product.searchKeyword)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+                    🔍 네이버쇼핑
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── 건강뉴스 뷰 ──────────────────────────────────────────
+const SEASON_CONFIG: Record<string, { bg: string; emoji: string; textColor: string }> = {
+  "봄":  { bg: "bg-green-50",  emoji: "🌸", textColor: "text-green-700" },
+  "여름": { bg: "bg-sky-50",    emoji: "☀️", textColor: "text-sky-700" },
+  "가을": { bg: "bg-amber-50",  emoji: "🍂", textColor: "text-amber-700" },
+  "겨울": { bg: "bg-blue-50",   emoji: "❄️", textColor: "text-blue-700" },
+};
+
+function NewsView() {
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<NewsData | null>(null);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const month = new Date().getMonth() + 1;
+    fetch("/api/health-news", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month }),
+    })
+      .then((r) => r.json())
+      .then((json) => { if (json.error) throw new Error(json.error); setData(json); })
+      .catch(() => setError("건강뉴스를 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const sc = SEASON_CONFIG[data?.season ?? "봄"] ?? SEASON_CONFIG["봄"];
+
+  return (
+    <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
+      <div className="max-w-3xl mx-auto">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            <NewsIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
+            건강뉴스
+          </h2>
+          {data && (
+            <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${sc.bg} ${sc.textColor}`}>
+              {sc.emoji} {data.season} 건강 정보
+            </span>
+          )}
+        </div>
+
+        {/* 날씨 알림 배너 */}
+        {data?.weatherAlert && (
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
+            <span className="text-lg flex-shrink-0">🌤️</span>
+            <p className="text-sm text-gray-700 font-medium leading-snug">{data.weatherAlert}</p>
+          </div>
+        )}
+
+        {/* 로딩 스켈레톤 */}
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3,4,5].map((i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
+                <div className="h-3 bg-gray-200 rounded w-1/4 mb-2" />
+                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-gray-100 rounded w-full mb-1" />
+                <div className="h-3 bg-gray-100 rounded w-4/5" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 오류 */}
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {/* 기사 목록 */}
+        {!loading && data?.articles && (
+          <div className="space-y-3">
+            {data.articles.map((article, idx) => (
+              <div key={idx} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
+                      style={{ backgroundColor: article.categoryColor || UBCARE_ORANGE }}>
+                      {article.category}
+                    </span>
+                    {article.urgencyLevel === "주의" && (
+                      <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">⚠️ 주의</span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900 mb-1 leading-snug">{article.title}</h3>
+                  <p className="text-xs text-gray-600 leading-relaxed">{article.summary}</p>
+
+                  <button onClick={() => setExpandedId(expandedId === idx ? null : idx)}
+                    className="mt-2 text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                    {expandedId === idx ? "▲ 접기" : "▼ 자세히 보기"}
+                  </button>
+
+                  {expandedId === idx && (
+                    <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                      {article.symptoms?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-red-600 mb-1.5">⚠️ 주의 증상</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {article.symptoms.map((s, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-red-50 text-red-700 text-xs rounded-md font-medium">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {article.preventionTips?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-green-600 mb-1.5">✅ 예방법</p>
+                          <ul className="space-y-1">
+                            {article.preventionTips.map((tip, i) => (
+                              <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                <span className="text-green-500 mt-0.5 flex-shrink-0">•</span>{tip}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {article.recommendedFoods?.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-orange-600 mb-1.5">🍽️ 추천 음식</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {article.recommendedFoods.map((f, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-md font-medium">{f}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -324,20 +771,18 @@ function Calendar({ sessions, selectedDate, onSelectDate, onViewMonthChange }: {
 function MenuPanel({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<"guide" | "info">("guide");
   const [openGuide, setOpenGuide] = useState<number | null>(0);
-
   return (
     <div className="fixed inset-0 z-50 flex justify-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white w-full max-w-xs lg:max-w-sm h-full flex flex-col shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-orange-600" style={{ backgroundColor: UBCARE_ORANGE }}>
+      <div className="relative bg-white w-full max-w-xs lg:max-w-sm h-full flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: UBCARE_ORANGE }}>
           <span className="font-bold text-white text-sm">메뉴</span>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white text-xl">×</button>
         </div>
         <div className="flex border-b border-gray-200">
           {[{ key: "guide", label: "기능 안내" }, { key: "info", label: "앱 정보" }].map((t) => (
             <button key={t.key} onClick={() => setTab(t.key as "guide" | "info")}
-              className={`flex-1 py-2.5 text-xs font-semibold transition-colors border-b-2 ${tab === t.key ? "border-orange-500 text-orange-600" : "border-transparent text-gray-500"}`}
+              className={`flex-1 py-2.5 text-xs font-semibold border-b-2 transition-colors ${tab === t.key ? "" : "border-transparent text-gray-500"}`}
               style={tab === t.key ? { borderBottomColor: UBCARE_ORANGE, color: UBCARE_ORANGE } : {}}>
               {t.label}
             </button>
@@ -373,24 +818,21 @@ function MenuPanel({ onClose }: { onClose: () => void }) {
             <div className="p-4 space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
                 <p className="text-xs font-bold text-orange-700 mb-1">⚠️ 해커톤 시연용</p>
-                <p className="text-xs text-orange-600">본 서비스는 유비케어 IT개발본부 해커톤 시연용으로 제작된 프로토타입이며, 실제 서비스가 아닙니다.</p>
+                <p className="text-xs text-orange-600">본 서비스는 유비케어 IT개발본부 해커톤 시연용 프로토타입이며, 실제 서비스가 아닙니다.</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <Image src="/ubcare-logo.png" alt="UBcare" width={80} height={24} className="object-contain" />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">MediVibe AI</p>
-                    <p className="text-xs text-gray-500">AI 의료 정보 도우미</p>
-                  </div>
+                  <div><p className="text-sm font-bold text-gray-900">MediVibe AI</p><p className="text-xs text-gray-500">AI 의료 정보 도우미</p></div>
                 </div>
                 <div className="space-y-1 text-xs text-gray-600">
                   <div className="flex justify-between"><span className="text-gray-400">버전</span><span className="font-mono font-semibold">{APP_VERSION}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-400">빌드 날짜</span><span className="font-mono">{BUILD_DATE}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-400">AI 모델</span><span className="font-mono text-right max-w-[55%] break-all">claude-haiku-4-5</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">빌드</span><span className="font-mono">{BUILD_DATE}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">AI 모델</span><span className="font-mono">claude-haiku-4-5</span></div>
                 </div>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-sm font-bold text-gray-900 mb-3">🛠️ 개발 기술 스택</p>
+                <p className="text-sm font-bold text-gray-900 mb-3">🛠️ 기술 스택</p>
                 <div className="space-y-3">
                   {TECH_STACK.map((stack) => (
                     <div key={stack.category}>
@@ -404,16 +846,15 @@ function MenuPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-bold text-gray-900">📄 웹사이트 정보</p>
-                <div className="text-xs text-gray-600 space-y-1.5">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-gray-900 mb-2">📄 웹사이트 정보</p>
+                <div className="text-xs text-gray-600 space-y-1">
                   <p><span className="font-semibold">서비스명:</span> MediVibe AI</p>
                   <p><span className="font-semibold">개발:</span> 유비케어 IT개발본부</p>
-                  <p><span className="font-semibold">목적:</span> AI-Native 개발 해커톤 시연</p>
                   <p><span className="font-semibold">버전:</span> {APP_VERSION} ({BUILD_DATE})</p>
                 </div>
-                <div className="pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-400">Copyright © UBcare Co., Ltd.<br />All rights reserved.</p>
+                <div className="pt-2 mt-2 border-t border-gray-200">
+                  <p className="text-xs text-gray-400">Copyright © UBcare Co., Ltd. All rights reserved.</p>
                 </div>
               </div>
             </div>
@@ -426,31 +867,27 @@ function MenuPanel({ onClose }: { onClose: () => void }) {
 
 // ─── 메인 ────────────────────────────────────────────────
 export default function Home() {
-  const [view, setView] = useState<"chat" | "records">("chat");
+  const [view, setView] = useState<ViewType>("chat");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // 채팅 상태
-  const [sessionId] = useState(() => generateId());
+  // 채팅 — sessionId를 변경 가능하게
+  const [currentSessionId, setCurrentSessionId] = useState(() => generateId());
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 기록 상태
+  // 기록
   const [sessions, setSessions] = useState<HealthSession[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr());
   const [selectedSession, setSelectedSession] = useState<HealthSession | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<{ year: number; month: number }>({
-    year: new Date().getFullYear(), month: new Date().getMonth()
+    year: new Date().getFullYear(), month: new Date().getMonth(),
   });
-
-  // 검색 상태
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 삭제 확인 다이얼로그 상태
-  const [confirmDialog, setConfirmDialog] = useState<{
-    message: string; onConfirm: () => void;
-  } | null>(null);
+  // 삭제 다이얼로그
+  const [confirmDialog, setConfirmDialog] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => { setSessions(loadSessions()); }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
@@ -460,12 +897,27 @@ export default function Home() {
     const lastSymptom = [...msgs].reverse().find((m) => m.symptomData)?.symptomData;
     const title = generateSessionTitle(msgs, lastSymptom);
     const session: HealthSession = {
-      id: sessionId, date: todayStr(), createdAt: new Date().toISOString(),
+      id: currentSessionId, date: todayStr(), createdAt: new Date().toISOString(),
       title, messages: msgs, symptomData: lastSymptom,
     };
     saveSession(session);
     setSessions(loadSessions());
-  }, [sessionId]);
+  }, [currentSessionId]);
+
+  // 새 대화 시작
+  const startNewChat = useCallback(() => {
+    setMessages([]);
+    setCurrentSessionId(generateId());
+    setInput("");
+  }, []);
+
+  // 이전 대화 이어서 상담
+  const handleContinueSession = useCallback((session: HealthSession) => {
+    setMessages(session.messages);
+    setCurrentSessionId(generateId()); // 새 세션 ID로 저장됨
+    setView("chat");
+    window.scrollTo(0, 0);
+  }, []);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -547,7 +999,6 @@ export default function Home() {
     });
   };
 
-  // 검색 결과 / 날짜별 세션
   const trimmedQuery = searchQuery.trim();
   const displaySessions = trimmedQuery
     ? sessions.filter((s) =>
@@ -557,13 +1008,20 @@ export default function Home() {
       )
     : sessions.filter((s) => s.date === selectedDate);
 
+  // ── 네비 아이템 (4개) ────────────────────────────────
+  const NAV_ITEMS = [
+    { key: "chat" as ViewType,        icon: (cls: string) => <PulseIcon className={cls} />,    labelLong: "AI 건강 상담",  labelShort: "AI 상담" },
+    { key: "records" as ViewType,     icon: (cls: string) => <CalendarIcon className={cls} />, labelLong: "건강기록",      labelShort: "건강기록" },
+    { key: "supplements" as ViewType, icon: (cls: string) => <PillIcon className={cls} />,     labelLong: "건강식품 추천", labelShort: "건기식" },
+    { key: "news" as ViewType,        icon: (cls: string) => <NewsIcon className={cls} />,     labelLong: "건강뉴스",      labelShort: "뉴스" },
+  ];
+
   // ── 채팅 영역 ────────────────────────────────────────
   const ChatArea = (
     <div className="flex flex-col h-full">
       <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5 pb-16">
-            {/* 캐릭터 아바타: 고정 크기 원형 */}
             <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-orange-100 shadow-md flex-shrink-0">
               <Image src="/chatbot-character.png" alt="AI 도우미" width={80} height={80} className="w-full h-full object-cover" />
             </div>
@@ -588,7 +1046,6 @@ export default function Home() {
             {messages.map((msg, idx) => (
               <div key={idx} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
-                  /* 고정 크기 원형 아바타 — 대화가 길어도 늘어나지 않음 */
                   <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mt-1 border border-orange-100">
                     <Image src="/chatbot-character.png" alt="AI" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
@@ -620,12 +1077,10 @@ export default function Home() {
 
       <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex-shrink-0">
         <div className="flex gap-2 items-end max-w-4xl mx-auto">
-          {messages.length > 0 && (
-            <button onClick={() => setMessages([])}
-              className="flex-shrink-0 w-9 h-9 rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 flex items-center justify-center" title="새 대화">
-              <EditIcon className="w-4 h-4" />
-            </button>
-          )}
+          <button onClick={startNewChat}
+            className="flex-shrink-0 w-9 h-9 rounded-xl border border-gray-200 text-gray-400 hover:bg-gray-50 hover:border-orange-300 hover:text-orange-500 flex items-center justify-center transition-colors" title="새 대화 시작">
+            <EditIcon className="w-4 h-4" />
+          </button>
           <textarea value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
@@ -656,7 +1111,6 @@ export default function Home() {
   const RecordsArea = (
     <div className="h-full overflow-y-auto px-4 lg:px-8 py-5">
       <div className="max-w-5xl mx-auto">
-        {/* 헤더 + 삭제 버튼 */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <CalendarIcon className="w-5 h-5" style={{ color: UBCARE_ORANGE }} />
@@ -664,15 +1118,11 @@ export default function Home() {
           </h2>
           {sessions.length > 0 && (
             <div className="flex gap-3">
-              <button onClick={handleDeleteMonth}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
-                <TrashIcon className="w-3.5 h-3.5" />
-                이번 달 삭제
+              <button onClick={handleDeleteMonth} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
+                <TrashIcon className="w-3.5 h-3.5" />이번 달 삭제
               </button>
-              <button onClick={handleDeleteAll}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
-                <TrashIcon className="w-3.5 h-3.5" />
-                전체 삭제
+              <button onClick={handleDeleteAll} className="text-xs text-gray-400 hover:text-red-500 transition-colors font-medium flex items-center gap-1">
+                <TrashIcon className="w-3.5 h-3.5" />전체 삭제
               </button>
             </div>
           )}
@@ -681,27 +1131,17 @@ export default function Home() {
         {/* 검색창 */}
         <div className="relative mb-4">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+          <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="증상, 진료과, 키워드로 검색..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent shadow-sm"
-          />
+            className="w-full pl-9 pr-8 py-2.5 text-sm text-gray-900 placeholder-gray-400 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent shadow-sm" />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none">
-              ×
-            </button>
+            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
           )}
         </div>
 
         {trimmedQuery ? (
-          /* 검색 결과 뷰 */
           <div>
-            <p className="text-xs text-gray-500 mb-3 font-medium">
-              &ldquo;{trimmedQuery}&rdquo; 검색 결과 ({displaySessions.length}건)
-            </p>
+            <p className="text-xs text-gray-500 mb-3 font-medium">&ldquo;{trimmedQuery}&rdquo; 검색 결과 ({displaySessions.length}건)</p>
             {displaySessions.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
                 <SearchIcon className="w-8 h-8 text-gray-300 mx-auto mb-2" />
@@ -710,34 +1150,28 @@ export default function Home() {
             ) : (
               <div className="space-y-2">
                 {displaySessions.map((s) => (
-                  <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} />
+                  <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
                 ))}
               </div>
             )}
           </div>
         ) : (
-          /* 캘린더 + 날짜별 기록 뷰 */
           <div className="grid lg:grid-cols-2 gap-5">
             <div>
-              <Calendar
-                sessions={sessions}
-                selectedDate={selectedDate}
+              <Calendar sessions={sessions} selectedDate={selectedDate}
                 onSelectDate={(d) => { setSelectedDate(d); setSelectedSession(null); }}
-                onViewMonthChange={(y, m) => setCalendarMonth({ year: y, month: m })}
-              />
+                onViewMonthChange={(y, m) => setCalendarMonth({ year: y, month: m })} />
             </div>
             <div>
               {selectedDate && (
                 <>
-                  <p className="text-xs text-gray-500 mb-2 font-medium">
-                    {selectedDate.replace(/-/g, ".")} 상담 기록 ({displaySessions.length}건)
-                  </p>
+                  <p className="text-xs text-gray-500 mb-2 font-medium">{selectedDate.replace(/-/g, ".")} 상담 기록 ({displaySessions.length}건)</p>
                   {displaySessions.length === 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-400">이 날의 상담 기록이 없습니다.</div>
                   ) : (
                     <div className="space-y-2">
                       {displaySessions.map((s) => (
-                        <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} />
+                        <SessionCard key={s.id} s={s} selectedSession={selectedSession} setSelectedSession={setSelectedSession} onDelete={handleDeleteSession} onContinue={handleContinueSession} />
                       ))}
                     </div>
                   )}
@@ -760,26 +1194,32 @@ export default function Home() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* ── PC 사이드바 ── */}
       <aside className="hidden lg:flex flex-col w-56 xl:w-64 bg-white border-r border-gray-200 flex-shrink-0">
-        {/* 로고 — 센터 정렬 */}
         <div className="px-5 py-5 border-b border-gray-100 flex flex-col items-center">
           <Image src="/ubcare-logo.png" alt="UBcare" width={110} height={32} className="object-contain" />
           <p className="text-xs text-gray-500 mt-1.5">AI 의료 도우미</p>
         </div>
-        {/* 네비 */}
-        <nav className="flex-1 p-3 space-y-1">
-          {[
-            { key: "chat", icon: <PulseIcon className="w-5 h-5" />, label: "AI 건강 상담" },
-            { key: "records", icon: <CalendarIcon className="w-5 h-5" />, label: "건강기록" },
-          ].map((item) => (
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {NAV_ITEMS.map((item) => (
             <button key={item.key}
-              onClick={() => { setView(item.key as "chat" | "records"); if (item.key === "records") setSessions(loadSessions()); }}
+              onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${view === item.key ? "text-white" : "text-gray-600 hover:bg-gray-100"}`}
               style={view === item.key ? { backgroundColor: UBCARE_ORANGE } : {}}>
-              {item.icon}{item.label}
+              {item.icon("w-5 h-5")}{item.labelLong}
             </button>
           ))}
         </nav>
-        {/* 하단 정보 */}
+
+        {/* 새 대화 버튼 (사이드바 하단) */}
+        {view === "chat" && (
+          <div className="px-3 pb-2">
+            <button onClick={startNewChat}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-colors hover:opacity-80"
+              style={{ borderColor: UBCARE_ORANGE, color: UBCARE_ORANGE, backgroundColor: "#fff7f0" }}>
+              <EditIcon className="w-4 h-4" />새 대화 시작
+            </button>
+          </div>
+        )}
+
         <div className="p-4 border-t border-gray-100 text-xs text-gray-400 space-y-0.5">
           <p className="font-semibold text-gray-500">MediVibe AI {APP_VERSION}</p>
           <p>Copyright © UBcare Co., Ltd.</p>
@@ -791,17 +1231,15 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* 헤더 */}
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center flex-shrink-0">
-          {/* 모바일: 로고 센터 정렬 */}
           <div className="lg:hidden flex-1 flex justify-center">
             <Image src="/ubcare-logo.png" alt="UBcare" width={100} height={28} className="object-contain" />
           </div>
-          {/* PC: 뷰 타이틀 */}
           <div className="hidden lg:flex items-center gap-2 text-sm font-bold text-gray-900 flex-1">
-            {view === "chat"
-              ? <><PulseIcon className="w-4 h-4" style={{ color: UBCARE_ORANGE }} />AI 건강 상담</>
-              : <><CalendarIcon className="w-4 h-4" style={{ color: UBCARE_ORANGE }} />건강기록</>}
+            {NAV_ITEMS.find((n) => n.key === view)?.icon("w-4 h-4")}
+            <span style={{ color: view === "chat" || view === "records" ? undefined : UBCARE_ORANGE }}>
+              {NAV_ITEMS.find((n) => n.key === view)?.labelLong}
+            </span>
           </div>
-          {/* 우측 버튼들 */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -820,102 +1258,29 @@ export default function Home() {
 
         {/* 콘텐츠 */}
         <div className="flex-1 overflow-hidden">
-          {view === "chat" ? ChatArea : RecordsArea}
+          {view === "chat" && ChatArea}
+          {view === "records" && RecordsArea}
+          {view === "supplements" && <SupplementsView />}
+          {view === "news" && <NewsView />}
         </div>
 
-        {/* 모바일 하단 네비 */}
+        {/* 모바일 하단 네비 (4개) */}
         <nav className="lg:hidden bg-white border-t border-gray-200 flex flex-shrink-0">
-          {[
-            { key: "chat", icon: <PulseIcon className="w-6 h-6" />, label: "AI 상담" },
-            { key: "records", icon: <CalendarIcon className="w-6 h-6" />, label: "건강기록" },
-          ].map((item) => (
+          {NAV_ITEMS.map((item) => (
             <button key={item.key}
-              onClick={() => { setView(item.key as "chat" | "records"); if (item.key === "records") setSessions(loadSessions()); }}
-              className={`flex-1 py-3 flex flex-col items-center gap-0.5 text-xs font-medium transition-colors ${view === item.key ? "" : "text-gray-400"}`}
+              onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
+              className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 font-medium transition-colors ${view === item.key ? "" : "text-gray-400"}`}
               style={view === item.key ? { color: UBCARE_ORANGE } : {}}>
-              {item.icon}
-              <span>{item.label}</span>
+              {item.icon("w-5 h-5")}
+              <span className="text-[10px]">{item.labelShort}</span>
             </button>
           ))}
         </nav>
       </div>
 
-      {/* 메뉴 패널 */}
       {menuOpen && <MenuPanel onClose={() => setMenuOpen(false)} />}
-
-      {/* 삭제 확인 다이얼로그 */}
       {confirmDialog && (
-        <ConfirmDialog
-          message={confirmDialog.message}
-          onConfirm={confirmDialog.onConfirm}
-          onCancel={() => setConfirmDialog(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── 세션 카드 (분리) ────────────────────────────────────
-function SessionCard({ s, selectedSession, setSelectedSession, onDelete }: {
-  s: HealthSession;
-  selectedSession: HealthSession | null;
-  setSelectedSession: (s: HealthSession | null) => void;
-  onDelete: (id: string) => void;
-}) {
-  const isOpen = selectedSession?.id === s.id;
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:border-orange-200 transition-colors">
-      <div className="p-4">
-        <div className="flex items-start gap-2">
-          <button onClick={() => setSelectedSession(isOpen ? null : s)} className="flex-1 min-w-0 text-left">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 leading-snug">{s.title}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {new Date(s.createdAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
-                  {" · "}
-                  {s.date.replace(/-/g, ".")}
-                  {" · "}
-                  메시지 {s.messages.length}개
-                </p>
-              </div>
-              {s.symptomData && (
-                <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border font-medium ${URGENCY_STYLE[s.symptomData.urgency]?.bg} ${URGENCY_STYLE[s.symptomData.urgency]?.text} ${URGENCY_STYLE[s.symptomData.urgency]?.border}`}>
-                  {URGENCY_STYLE[s.symptomData.urgency]?.icon} {s.symptomData.department}
-                </span>
-              )}
-            </div>
-          </button>
-          {/* 개별 삭제 버튼 */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(s.id); }}
-            className="flex-shrink-0 w-7 h-7 rounded-lg text-gray-300 hover:bg-red-50 hover:text-red-400 flex items-center justify-center transition-colors"
-            title="삭제">
-            <TrashIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* 대화 내용 펼침 */}
-      {isOpen && (
-        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
-          {s.messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${msg.role === "user" ? "text-white" : "bg-white border border-gray-200 text-gray-800"}`}
-                style={msg.role === "user" ? { backgroundColor: UBCARE_ORANGE } : {}}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
-          {s.symptomData && (
-            <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-1.5">
-              <a href={`https://map.kakao.com/?q=${encodeURIComponent(s.symptomData.searchKeyword)}`} target="_blank" rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-yellow-400 text-gray-900">🗺️ 카카오맵</a>
-              <a href={`https://map.naver.com/v5/search/${encodeURIComponent(s.symptomData.searchKeyword)}`} target="_blank" rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-green-500 text-white">🗺️ 네이버지도</a>
-            </div>
-          )}
-        </div>
+        <ConfirmDialog message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(null)} />
       )}
     </div>
   );
