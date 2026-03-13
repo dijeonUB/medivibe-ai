@@ -508,6 +508,82 @@ const SORT_OPTIONS = [
   { value: "priceHigh", label: "가격높은순" },
 ];
 
+// ─── 데이터 수집 스플래시 ───────────────────────────────────
+function DataSplash({ type }: { type: "supplements" | "news" }) {
+  const [dots, setDots] = useState("");
+  const [step, setStep] = useState(0);
+
+  const STEPS_SUPP = [
+    "카테고리별 건강식품 데이터를 분석하고 있습니다",
+    "국내 판매량 및 성분 정보를 수집하고 있습니다",
+    "AI가 최적의 제품을 선별하고 있습니다",
+    "추천 목록을 정리하고 있습니다",
+  ];
+  const STEPS_NEWS = [
+    "현재 계절 건강 이슈를 분석하고 있습니다",
+    "최신 의학 정보를 수집하고 있습니다",
+    "AI가 핵심 건강 정보를 큐레이션하고 있습니다",
+    "건강 뉴스를 정리하고 있습니다",
+  ];
+  const steps = type === "supplements" ? STEPS_SUPP : STEPS_NEWS;
+
+  useEffect(() => {
+    const dotTimer = setInterval(() => {
+      setDots((d) => (d.length >= 3 ? "" : d + "."));
+    }, 400);
+    const stepTimer = setInterval(() => {
+      setStep((s) => (s + 1) % steps.length);
+    }, 1800);
+    return () => { clearInterval(dotTimer); clearInterval(stepTimer); };
+  }, [steps.length]);
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center px-6 py-12">
+      {/* 캐릭터 */}
+      <div className="relative mb-6">
+        <div className="w-24 h-24 rounded-full overflow-hidden border-4 shadow-xl" style={{ borderColor: UBCARE_ORANGE }}>
+          <Image src="/chatbot-character.jpg" alt="AI 분석 중" width={96} height={96} className="w-full h-full object-cover" />
+        </div>
+        {/* 회전 링 */}
+        <div className="absolute inset-0 rounded-full border-4 border-transparent animate-spin"
+          style={{ borderTopColor: UBCARE_ORANGE, animationDuration: "1.2s" }} />
+      </div>
+
+      {/* 제목 */}
+      <div className="text-center mb-6">
+        <p className="text-base font-bold text-gray-900 mb-1">
+          {type === "supplements" ? "🤖 AI 건강식품 분석 중" : "🤖 AI 건강뉴스 수집 중"}
+        </p>
+        <p className="text-xs text-gray-500">최신 자료를 조회하고 수집하고 있습니다{dots}</p>
+      </div>
+
+      {/* 진행 단계 */}
+      <div className="w-full max-w-sm bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 animate-pulse"
+            style={{ backgroundColor: UBCARE_ORANGE }}>
+            <span className="text-white text-xs">✦</span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-700 leading-relaxed">{steps[step]}{dots}</p>
+            <div className="mt-2 flex gap-1">
+              {steps.map((_, i) => (
+                <div key={i} className="h-1 flex-1 rounded-full transition-all duration-500"
+                  style={{ backgroundColor: i <= step ? UBCARE_ORANGE : "#e5e7eb" }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 안내 메시지 */}
+      <p className="mt-5 text-[11px] text-gray-400 text-center leading-relaxed">
+        Claude AI가 실시간으로 데이터를 분석합니다<br />잠시만 기다려 주세요 (약 5~10초)
+      </p>
+    </div>
+  );
+}
+
 // 카테고리별 이미지 아이콘 매핑
 const SUPP_ICON_MAP: Record<string, { emoji: string; bg: string; text: string }> = {
   "면역력":  { emoji: "🛡️", bg: "#fff7ed", text: "#c2410c" },
@@ -562,6 +638,9 @@ function SupplementsView() {
   const visibleProducts = data?.products ? (showAll ? data.products : data.products.slice(0, 5)) : [];
   const hasMore = (data?.products?.length ?? 0) > 5 && !showAll;
 
+  // 스플래시 표시 시 전체 화면
+  if (loading) return <DataSplash type="supplements" />;
+
   return (
     <div className="h-full overflow-y-auto px-4 lg:px-6 py-5">
       <div className="max-w-none">
@@ -607,26 +686,8 @@ function SupplementsView() {
           <p className="text-xs text-blue-600">AI가 제공하는 참고용 정보입니다. 실제 가격·순위는 각 쇼핑몰에서 확인하세요.</p>
         </div>
 
-        {/* 로딩 스켈레톤 */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {[1,2,3,4,5].map((i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-                <div className="flex gap-3">
-                  <div className="w-14 h-14 bg-gray-200 rounded-xl flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2 mb-1" />
-                    <div className="h-3 bg-gray-100 rounded w-3/4" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 오류 */}
-        {error && !loading && (
+        {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
             <p className="text-sm text-red-600 mb-2">{error}</p>
             <button onClick={() => fetchSupplements(category, sortBy)} className="text-xs text-red-500 underline">다시 시도</button>
@@ -772,6 +833,9 @@ function NewsView() {
   const visibleArticles = data?.articles ? (showAll ? data.articles : data.articles.slice(0, 5)) : [];
   const hasMore = (data?.articles?.length ?? 0) > 5 && !showAll;
 
+  // 스플래시 표시 시 전체 화면
+  if (loading) return <DataSplash type="news" />;
+
   return (
     <div className="h-full overflow-y-auto px-4 lg:px-6 py-5">
       <div className="max-w-3xl mx-auto">
@@ -796,22 +860,8 @@ function NewsView() {
           </div>
         )}
 
-        {/* 로딩 스켈레톤 */}
-        {loading && (
-          <div className="space-y-3">
-            {[1,2,3,4,5].map((i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse">
-                <div className="h-3 bg-gray-200 rounded w-1/4 mb-2" />
-                <div className="h-5 bg-gray-200 rounded w-3/4 mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-full mb-1" />
-                <div className="h-3 bg-gray-100 rounded w-4/5" />
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* 오류 */}
-        {error && !loading && (
+        {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
             <p className="text-sm text-red-600">{error}</p>
           </div>
@@ -1279,7 +1329,7 @@ export default function Home() {
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center gap-5 pb-16">
             <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-orange-100 shadow-md flex-shrink-0">
-              <Image src="/chatbot-character.png" alt="AI 도우미" width={80} height={80} className="w-full h-full object-cover" />
+              <Image src="/chatbot-character.jpg" alt="AI 도우미" width={80} height={80} className="w-full h-full object-cover" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-1">무엇이 불편하신가요?</h2>
@@ -1303,7 +1353,7 @@ export default function Home() {
               <div key={idx} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
                   <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 mt-1 border border-orange-100">
-                    <Image src="/chatbot-character.png" alt="AI" width={32} height={32} className="w-full h-full object-cover" />
+                    <Image src="/chatbot-character.jpg" alt="AI" width={32} height={32} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className={`flex flex-col gap-1 ${msg.role === "user" ? "items-end" : "items-start"} max-w-[78%] lg:max-w-[65%]`}>
