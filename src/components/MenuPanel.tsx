@@ -59,9 +59,10 @@ type TabKey = typeof TABS[number]["key"];
 
 interface MenuPanelProps {
   onClose: () => void;
+  onStartTutorial?: () => void;
 }
 
-export default function MenuPanel({ onClose }: MenuPanelProps) {
+export default function MenuPanel({ onClose, onStartTutorial }: MenuPanelProps) {
   const [tab, setTab] = useState<TabKey>("guide");
   const [openGuide, setOpenGuide] = useState<number | null>(0);
   const [fbTitle, setFbTitle] = useState("");
@@ -88,6 +89,22 @@ export default function MenuPanel({ onClose }: MenuPanelProps) {
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white text-xl">×</button>
         </div>
+
+        {/* 사용 가이드 체험 버튼 */}
+        {onStartTutorial && (
+          <button
+            onClick={onStartTutorial}
+            className="mx-4 my-3 flex items-center gap-3 px-4 py-3 rounded-xl border-2 w-[calc(100%-2rem)] transition-all hover:opacity-90 active:scale-95"
+            style={{ borderColor: UBCARE_ORANGE, backgroundColor: "#fff7f0" }}
+          >
+            <span className="text-xl flex-shrink-0">🎓</span>
+            <div className="text-left">
+              <p className="text-sm font-bold" style={{ color: UBCARE_ORANGE }}>사용 가이드 체험</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">주요 기능을 단계별로 안내해드려요</p>
+            </div>
+            <span className="ml-auto text-gray-400 text-sm flex-shrink-0">→</span>
+          </button>
+        )}
 
         {/* 탭 */}
         <div className="flex border-b border-gray-200 bg-white flex-shrink-0 overflow-x-auto">

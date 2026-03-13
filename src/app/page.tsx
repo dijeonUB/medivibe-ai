@@ -18,11 +18,15 @@ import SessionCard from "@/components/SessionCard";
 import SupplementsView from "@/components/SupplementsView";
 import NewsView from "@/components/NewsView";
 import MenuPanel from "@/components/MenuPanel";
+import TutorialOverlay from "@/components/TutorialOverlay";
+
+const TUTORIAL_KEY = "medivibe_tutorial_seen_v1";
 
 // ─── 메인 ────────────────────────────────────────────────
 export default function Home() {
   const [view, setView] = useState<ViewType>("chat");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // 채팅 — sessionId를 변경 가능하게
   const [currentSessionId, setCurrentSessionId] = useState(() => generateId());
@@ -45,6 +49,19 @@ export default function Home() {
 
   useEffect(() => { setSessions(loadSessions()); }, []);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // 첫 방문 시 튜토리얼 자동 표시
+  useEffect(() => {
+    if (!localStorage.getItem(TUTORIAL_KEY)) {
+      const t = setTimeout(() => setShowTutorial(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  const handleTutorialClose = useCallback(() => {
+    localStorage.setItem(TUTORIAL_KEY, "1");
+    setShowTutorial(false);
+  }, []);
 
   const persistSession = useCallback((msgs: Message[]) => {
     if (msgs.filter((m) => m.role === "user").length === 0) return;
@@ -373,6 +390,7 @@ export default function Home() {
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => (
             <button key={item.key}
+              data-tutorial={`nav-${item.key}`}
               onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${view === item.key ? "text-white" : "text-gray-600 hover:bg-gray-100"}`}
               style={view === item.key ? { backgroundColor: UBCARE_ORANGE } : {}}>
@@ -417,7 +435,7 @@ export default function Home() {
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               <span className="text-xs text-gray-500">온라인</span>
             </div>
-            <button onClick={() => setMenuOpen(true)}
+            <button data-tutorial="menu-btn" onClick={() => setMenuOpen(true)}
               className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <circle cx="9" cy="3" r="1.5" fill="#6b7280" />
@@ -445,6 +463,7 @@ export default function Home() {
         <nav className="lg:hidden bg-white border-t border-gray-200 flex flex-shrink-0">
           {NAV_ITEMS.map((item) => (
             <button key={item.key}
+              data-tutorial={`nav-${item.key}`}
               onClick={() => { setView(item.key); if (item.key === "records") setSessions(loadSessions()); }}
               className={`flex-1 py-2.5 flex flex-col items-center gap-0.5 font-medium transition-colors ${view === item.key ? "" : "text-gray-400"}`}
               style={view === item.key ? { color: UBCARE_ORANGE } : {}}>
@@ -455,10 +474,16 @@ export default function Home() {
         </nav>
       </div>
 
-      {menuOpen && <MenuPanel onClose={() => setMenuOpen(false)} />}
+      {menuOpen && (
+        <MenuPanel
+          onClose={() => setMenuOpen(false)}
+          onStartTutorial={() => { setMenuOpen(false); setTimeout(() => setShowTutorial(true), 150); }}
+        />
+      )}
       {confirmDialog && (
         <ConfirmDialog message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(null)} />
       )}
+      <TutorialOverlay isVisible={showTutorial} onClose={handleTutorialClose} />
     </div>
   );
 }
