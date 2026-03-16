@@ -7,13 +7,15 @@ import { ViewType, HealthSession } from "@/types";
 import { UBCARE_ORANGE, APP_VERSION, QUICK_QUESTIONS } from "@/constants";
 import { useChat } from "@/hooks/useChat";
 import { useRecords } from "@/hooks/useRecords";
-import { PulseIcon, CalendarIcon, PillIcon, NewsIcon, EditIcon, TrashIcon, SearchIcon } from "@/components/icons";
+import { PulseIcon, CalendarIcon, PillIcon, NewsIcon, InsightIcon, EditIcon, TrashIcon, SearchIcon } from "@/components/icons";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import HospitalCard from "@/components/HospitalCard";
 import Calendar from "@/components/Calendar";
 import SessionCard from "@/components/SessionCard";
 import SupplementsView from "@/components/SupplementsView";
 import NewsView from "@/components/NewsView";
+import InsightView from "@/components/InsightView";
+import MorningBriefing from "@/components/MorningBriefing";
 import MenuPanel from "@/components/MenuPanel";
 import TutorialOverlay from "@/components/TutorialOverlay";
 
@@ -67,10 +69,11 @@ export default function Home() {
 
   // ── 네비 아이템 ───────────────────────────────────────
   const NAV_ITEMS = [
-    { key: "chat" as ViewType,        icon: (cls: string) => <PulseIcon className={cls} />,    labelLong: "AI 건강 상담",  labelShort: "AI 상담" },
-    { key: "records" as ViewType,     icon: (cls: string) => <CalendarIcon className={cls} />, labelLong: "건강기록",      labelShort: "건강기록" },
-    { key: "supplements" as ViewType, icon: (cls: string) => <PillIcon className={cls} />,     labelLong: "건강식품 추천", labelShort: "건기식" },
-    { key: "news" as ViewType,        icon: (cls: string) => <NewsIcon className={cls} />,     labelLong: "건강뉴스",      labelShort: "뉴스" },
+    { key: "chat" as ViewType,        icon: (cls: string) => <PulseIcon className={cls} />,     labelLong: "AI 건강 상담",  labelShort: "AI 상담" },
+    { key: "records" as ViewType,     icon: (cls: string) => <CalendarIcon className={cls} />,  labelLong: "건강기록",      labelShort: "건강기록" },
+    { key: "supplements" as ViewType, icon: (cls: string) => <PillIcon className={cls} />,      labelLong: "건강식품 추천", labelShort: "건기식" },
+    { key: "news" as ViewType,        icon: (cls: string) => <NewsIcon className={cls} />,      labelLong: "건강뉴스",      labelShort: "뉴스" },
+    { key: "insight" as ViewType,     icon: (cls: string) => <InsightIcon className={cls} />,   labelLong: "건강 이력 분석", labelShort: "리포트" },
   ];
 
   const trimmedQuery = searchQuery.trim();
@@ -80,7 +83,8 @@ export default function Home() {
     <div className="flex flex-col h-full">
       <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-5 pb-16">
+          <div className="flex flex-col items-center justify-center h-full text-center gap-4 pb-16">
+            <MorningBriefing />
             <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-orange-100 shadow-md flex-shrink-0">
               <Image src="/chatbot-character.jpg" alt="AI 도우미" width={80} height={80} className="w-full h-full object-cover" />
             </div>
@@ -332,6 +336,9 @@ export default function Home() {
           </div>
           <div className="h-full" style={{ display: view === "news" ? "block" : "none" }}>
             <NewsView />
+          </div>
+          <div className="h-full" style={{ display: view === "insight" ? "block" : "none" }}>
+            <InsightView />
           </div>
         </div>
 

@@ -18,15 +18,21 @@ const STEPS_NEWS = [
   "AI가 핵심 건강 정보를 큐레이션하고 있습니다",
   "건강 뉴스를 정리하고 있습니다",
 ];
+const STEPS_INSIGHT = [
+  "전체 상담 이력을 불러오고 있습니다",
+  "증상 패턴과 반복 진료과를 분석하고 있습니다",
+  "AI가 장기 건강 트렌드를 파악하고 있습니다",
+  "이력 기반 개인화 리포트를 정리하고 있습니다",
+];
 
 interface DataSplashProps {
-  type: "supplements" | "news";
+  type: "supplements" | "news" | "insight";
 }
 
 export default function DataSplash({ type }: DataSplashProps) {
   const [dots, setDots] = useState("");
   const [step, setStep] = useState(0);
-  const steps = type === "supplements" ? STEPS_SUPP : STEPS_NEWS;
+  const steps = type === "supplements" ? STEPS_SUPP : type === "insight" ? STEPS_INSIGHT : STEPS_NEWS;
 
   useEffect(() => {
     const dotTimer = setInterval(() => {
@@ -53,7 +59,7 @@ export default function DataSplash({ type }: DataSplashProps) {
       {/* 제목 */}
       <div className="text-center mb-6">
         <p className="text-base font-bold text-gray-900 mb-1">
-          {type === "supplements" ? "🤖 AI 건강식품 분석 중" : "🤖 AI 건강뉴스 수집 중"}
+          {type === "supplements" ? "🤖 AI 건강식품 분석 중" : type === "insight" ? "🤖 AI 건강 이력 분석 중" : "🤖 AI 건강뉴스 수집 중"}
         </p>
         <p className="text-xs text-gray-500">최신 자료를 조회하고 수집하고 있습니다{dots}</p>
       </div>

@@ -73,3 +73,14 @@ export function ReplyIcon({ className, style }: IconProps) {
     </svg>
   );
 }
+
+export function InsightIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="12" width="4" height="9" rx="1" />
+      <rect x="10" y="7" width="4" height="14" rx="1" />
+      <rect x="17" y="3" width="4" height="18" rx="1" />
+      <path d="M3 3l18 0" strokeDasharray="2 2" strokeWidth="1" />
+    </svg>
+  );
+}

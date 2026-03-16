@@ -5,7 +5,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { UBCARE_ORANGE, APP_VERSION, BUILD_DATE, FEEDBACK_EMAIL, TECH_STACK, UPDATE_HISTORY } from "@/constants";
-import { PulseIcon, CalendarIcon, PillIcon, NewsIcon } from "@/components/icons";
+import { PulseIcon, CalendarIcon, PillIcon, NewsIcon, InsightIcon } from "@/components/icons";
 
 // 기능 가이드 — 아이콘 컴포넌트에 의존하므로 컴포넌트 내부에서 정의
 const FEATURE_GUIDE = [
@@ -44,6 +44,25 @@ const FEATURE_GUIDE = [
       "현재 계절에 맞는 건강 정보를 자동으로 제공합니다.",
       "계절병·미세먼지·영양관리 등 다양한 카테고리를 확인하세요.",
       "예방법, 추천 음식까지 상세 정보를 볼 수 있습니다.",
+    ],
+  },
+  {
+    icon: <InsightIcon className="w-4 h-4" />,
+    title: "건강 이력 분석",
+    steps: [
+      "전체 상담 이력을 AI가 분석하여 개인 건강 패턴을 파악합니다.",
+      "반복 키워드, 자주 방문하는 진료과, 월평균 상담 횟수를 확인하세요.",
+      "이력 기반 개인화 건강 추천사항도 함께 제공됩니다.",
+      "분석 결과는 월 1회 자동 캐시되어 빠르게 조회됩니다.",
+    ],
+  },
+  {
+    icon: <span className="text-sm">☀️</span>,
+    title: "아침 건강 브리핑",
+    steps: [
+      "AI 건강 상담 탭의 빈 화면 상단에 매일 아침 브리핑 카드가 표시됩니다.",
+      "최근 3일 상담 내역을 바탕으로 개인화된 오늘의 건강 조언을 제공합니다.",
+      "↺ 버튼으로 브리핑을 즉시 새로 생성할 수 있습니다.",
     ],
   },
 ];

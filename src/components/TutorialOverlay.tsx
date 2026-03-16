@@ -30,7 +30,7 @@ const STEPS: TutorialStep[] = [
     targetAttr: "nav-chat",
     emoji: "💬",
     title: "AI 건강 상담",
-    description: "증상을 자유롭게 입력하면\nAI가 진료과를 추천하고\n근처 병원까지 바로 연결해드려요.",
+    description: "증상을 자유롭게 입력하면\nAI가 진료과를 추천하고\n근처 병원까지 바로 연결해드려요.\n빈 화면에는 오늘의 건강 브리핑도 표시됩니다 ☀️",
   },
   {
     targetAttr: "nav-records",
@@ -49,6 +49,12 @@ const STEPS: TutorialStep[] = [
     emoji: "📰",
     title: "건강뉴스",
     description: "현재 계절에 맞는 건강 정보를\n자동으로 제공해요.\n예방법·추천 음식까지 확인해보세요.",
+  },
+  {
+    targetAttr: "nav-insight",
+    emoji: "📊",
+    title: "건강 이력 분석",
+    description: "전체 상담 이력을 AI가 분석해\n반복 증상·자주 가는 진료과·\n월평균 상담 횟수를 리포트로 보여줘요.\n상담을 쌓을수록 더 정확해집니다!",
   },
   {
     targetAttr: "menu-btn",

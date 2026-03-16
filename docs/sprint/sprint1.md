@@ -465,6 +465,8 @@ refusing to allow an OAuth App to create or update workflow
 
 ### 단위 테스트 (Vitest)
 
+#### v1.3.0 기준 (Sprint 1 완료 시점)
+
 ```
 > vitest run
 
@@ -476,19 +478,37 @@ refusing to allow an OAuth App to create or update workflow
    Duration  1.53s (transform 21ms, setup 131ms, import 25ms, tests 3ms)
 ```
 
-**테스트 케이스 상세:**
+#### v1.4.0 기준 (Sprint 2 완료 시점) — 현행
 
-| 테스트 스위트 | 케이스 | 결과 |
+```
+> vitest run
+
+ RUN  v4.1.0
+
+ Test Files  3 passed (3)
+      Tests  49 passed (49)
+   Start at  09:20:01
+   Duration  8.05s (transform 121ms, setup 2.13s, import 1.25s, tests 158ms)
+```
+
+**전체 테스트 케이스 상세:**
+
+| 테스트 파일 | 스위트 | 케이스 수 |
 |---|---|---|
-| 계절 매핑 | 3~5월은 봄 | ✅ pass |
-| 계절 매핑 | 6~8월은 여름 | ✅ pass |
-| 계절 매핑 | 9~11월은 가을 | ✅ pass |
-| 계절 매핑 | 12, 1, 2월은 겨울 | ✅ pass |
-| 계절 매핑 | 범위 밖 값은 기본값 봄 | ✅ pass |
-| 뉴스 카테고리 색상 | 모든 카테고리 hex 색상 코드 정의됨 | ✅ pass |
-| 뉴스 카테고리 색상 | 면역력 카테고리는 파란색 계열 | ✅ pass |
-| 텍스트 잘라내기 | maxLen 이하 문자열 그대로 반환 | ✅ pass |
-| 텍스트 잘라내기 | maxLen 초과 문자열은 잘라냄 | ✅ pass |
+| `utils.test.ts` | 계절 매핑 (5개), 뉴스 카테고리 색상 (2개), 텍스트 잘라내기 (2개) | 9 |
+| `healthStorage.test.ts` | localStorage CRUD, 날짜별·월별 필터링, 세션 정렬, 삭제 (30개) | 30 |
+| `components.test.tsx` | ConfirmDialog (6개), HospitalCard (8개) | 14 |
+| **합계** | | **49** |
+
+**테스트 전략 (현행):**
+
+| 계층 | 도구 | 대상 | 전략 |
+|---|---|---|---|
+| 유틸 함수 | Vitest | 계절 매핑, 텍스트 잘라내기, 카테고리 색상 | 순수 함수 단위 테스트 |
+| localStorage | Vitest + jsdom | 세션 저장·조회·삭제·필터 | jsdom `localStorage` Mock |
+| UI 컴포넌트 | Vitest + @testing-library/react | ConfirmDialog, HospitalCard | Render + Event + DOM 검증 |
+| API 엔드포인트 | 수동 (브라우저/Postman) | 6개 API Route | 빌드 후 로컬 `npm run dev` 연기 |
+| E2E | 미적용 (해커톤 범위 외) | — | Playwright 도입 예정 |
 
 **테스트 실패 이력 및 수정:**
 
@@ -509,6 +529,8 @@ $ npx tsc --noEmit
 
 ### 프로덕션 빌드 (`npm run build`)
 
+#### v1.3.0 기준
+
 ```
 ▲ Next.js 16.1.6 (Turbopack)
 ✓ Compiled successfully in 1589.3ms
@@ -521,6 +543,24 @@ Route (app)
 ├ ƒ /api/health-news     → 서버리스 함수
 ├ ƒ /api/supplements     → 서버리스 함수
 └ ƒ /api/symptom         → 서버리스 함수
+```
+
+#### v1.4.0 기준 (현행)
+
+```
+▲ Next.js 16.1.6 (Turbopack)
+✓ Compiled successfully in 1472.9ms
+✓ Generating static pages (10/10) in 434.0ms
+
+Route (app)
+┌ ○ /                        → 정적 렌더링
+├ ○ /_not-found
+├ ƒ /api/chat                → 서버리스 함수
+├ ƒ /api/health-news         → 서버리스 함수
+├ ƒ /api/morning-briefing    → 서버리스 함수  ← 신규
+├ ƒ /api/supplements         → 서버리스 함수
+├ ƒ /api/symptom             → 서버리스 함수
+└ ƒ /api/weekly-insight      → 서버리스 함수  ← 신규
 ```
 
 ### Vercel 배포 정보
@@ -563,6 +603,8 @@ page.tsx (Home)
 ├── types/index.ts
 ├── constants/index.ts
 ├── utils/healthStorage.ts
+├── store/healthStore.ts            ← Zustand 세션 스토어
+│   └── constants/index.ts
 ├── components/icons.tsx
 ├── components/ConfirmDialog.tsx
 ├── components/HospitalCard.tsx
@@ -577,9 +619,21 @@ page.tsx (Home)
 ├── components/NewsView.tsx
 │   ├── components/icons.tsx
 │   └── components/DataSplash.tsx
-└── components/MenuPanel.tsx
-    ├── constants/index.ts
-    └── components/icons.tsx
+├── components/MorningBriefing.tsx  ← 신규 (v1.4.0)
+│   ├── types/index.ts
+│   ├── constants/index.ts
+│   └── store/healthStore.ts
+├── components/InsightView.tsx      ← 신규 (v1.4.0)
+│   ├── types/index.ts
+│   ├── constants/index.ts
+│   ├── components/icons.tsx
+│   ├── components/DataSplash.tsx
+│   └── store/healthStore.ts
+├── components/MenuPanel.tsx
+│   ├── constants/index.ts
+│   └── components/icons.tsx
+└── components/TutorialOverlay.tsx
+    └── constants/index.ts
 ```
 
 ### 코딩 규칙 준수 현황
@@ -597,7 +651,7 @@ page.tsx (Home)
 
 ## 9. 완료 기능 목록
 
-### API 엔드포인트 (4개)
+### API 엔드포인트 (6개)
 
 | 엔드포인트 | 메서드 | 기능 | 응답 형식 |
 |-----------|--------|------|---------|
@@ -605,21 +659,26 @@ page.tsx (Home)
 | `/api/symptom` | POST | 증상 분석 → 진료과·긴급도 | JSON `{ department, urgency, ... }` |
 | `/api/supplements` | POST | 카테고리·정렬별 건강식품 10개 추천 | JSON `{ products[], categoryInfo }` |
 | `/api/health-news` | POST | 월·계절 기반 건강기사 8건 생성 | JSON `{ season, weatherAlert, articles[] }` |
+| `/api/morning-briefing` | POST | 최근 3일 상담 + 계절 기반 아침 브리핑 | JSON `MorningBriefingData` |
+| `/api/weekly-insight` | POST | 전체 이력 패턴 분석 리포트 | JSON `HealthInsightData` |
 
-### UI 기능 (12개 컴포넌트)
+### UI 기능 (16개 컴포넌트)
 
 | 컴포넌트 | 핵심 기능 |
 |---------|---------|
-| `Home` (`page.tsx`) | 전체 상태 관리, 레이아웃, 라우팅 |
+| `Home` (`page.tsx`) | 전체 상태 관리, 레이아웃, 5탭 라우팅 |
 | `Calendar` | 7열 그리드, 날짜별 건수, 월 이동, 범례 |
 | `SessionCard` | 메시지 펼치기, 병원찾기, 이어서 상담 |
 | `SupplementsView` | 카테고리 8종, 정렬 3종, 캐시, 더보기 |
 | `NewsView` | 계절별 기사, 증상/예방법/음식 접기/펼치기 |
-| `MenuPanel` | 기능안내, 업데이트, 앱정보, 불만접수 4탭 |
-| `DataSplash` | 4단계 진행 메시지, 회전 링, 프로그레스 바 |
+| `MorningBriefing` | 개인화 아침 브리핑 카드, 일별 캐시, 새로고침 |
+| `InsightView` | 건강 이력 분석 — 키워드 바 차트·진료과·긴급도·타임라인·추천 |
+| `MenuPanel` | 기능안내(6개), 업데이트, 앱정보, 불만접수 4탭 |
+| `DataSplash` | 4단계 진행 메시지 (supplements / news / insight), 회전 링 |
 | `HospitalCard` | 카카오맵, 네이버지도, 네이버예약, 119 신고 |
 | `ConfirmDialog` | 삭제 확인 모달 |
-| `icons.tsx` | SVG 아이콘 8개 |
+| `TutorialOverlay` | 스포트라이트 방식 7단계 튜토리얼 |
+| `icons.tsx` | SVG 아이콘 9개 (InsightIcon 추가) |
 
 ---
 
@@ -649,5 +708,69 @@ page.tsx (Home)
 
 ---
 
-*마지막 업데이트: 2026-03-13 17:10*
+---
+
+## 11. v1.4.0 추가 개발 기록 (2026-03-16)
+
+### 배경
+
+Sprint 1 완료 후 핵심 문제 발견: 상담 기록이 localStorage에 계속 쌓이지만, 이 데이터를 분석하거나 가치로 변환하는 기능이 없음. "쓸수록 나를 더 잘 아는 챗봇"을 위해 두 가지 기능 추가.
+
+---
+
+### 기능 1 — 아침 건강 브리핑 (`MorningBriefing.tsx`)
+
+**위치:** 채팅 빈 상태 (messages.length === 0) 최상단
+
+**동작 흐름:**
+1. 컴포넌트 마운트 → `medivibe_briefing_{오늘날짜}` 캐시 확인
+2. 캐시 히트 → 즉시 렌더링 (API 스킵)
+3. 캐시 미스 → 최근 3일 세션을 `SessionSummary`(경량 타입)로 변환 → `/api/morning-briefing` 호출
+4. 성공 → 캐시 저장 + 카드 렌더링
+5. 실패 → 조용히 숨김 (기존 빈 상태 그대로 유지)
+
+**UI 구성:** 오렌지 그라디언트 카드, 인사말, 최근 상담 요약 태그, 계절 팁, 오늘 조언, 체크 항목 목록, 새로고침(↺) 버튼
+
+**설계 결정:** 에러 시 숨김 처리 → 브리핑 기능 장애가 메인 채팅 UX에 영향을 주지 않도록 격리
+
+---
+
+### 기능 2 — 건강 이력 분석 탭 (`InsightView.tsx`)
+
+**위치:** 5번째 탭 (내비바 "리포트", 사이드바 "건강 이력 분석")
+
+**초기 설계 vs 최종 결정:**
+
+| 항목 | 초기 (7일 창) | 최종 (전체 이력) | 변경 이유 |
+|---|---|---|---|
+| 분석 범위 | 최근 7일 | 전체 이력 (최대 3년) | 사람이 자주 아프지 않음 → 7일 창에 데이터 희박 |
+| 타임라인 단위 | 일별 | 월별 | 장기 이력엔 일별이 너무 세분화됨 |
+| 캐시 키 | 주 월요일 | 이번 달 (`YYYY-MM`) | 데이터가 자주 바뀌지 않으므로 월 1회 충분 |
+| 추가 지표 | 없음 | 월평균 상담 횟수 | 빈도 패턴을 직관적으로 표현 |
+
+**UI 섹션 (순서):**
+1. 종합 평가 배너 — 총 상담 건수 + 월평균 + 최다 진료과 요약 통계
+2. 반복 건강 키워드 — CSS width% 수평 바 차트
+3. 진료과 분포 — 컬러 태그 + 카운트 뱃지
+4. 긴급도 분포 — 기존 `URGENCY_STYLE` 재사용
+5. 월별 증상 타임라인 — `YYYY-MM` 단위
+6. 이력 기반 건강 추천 — 체크리스트
+
+**캐시 정리 전략:**
+- 마운트 시 2개월 이상 된 `medivibe_insight_*` 키 자동 삭제
+- 구 포맷인 `medivibe_weekly_*` 키도 함께 정리 (마이그레이션 정리)
+
+---
+
+### ADR-006: 전체 이력 분석 — `SessionSummary` 경량 타입 전송
+
+**상황:** 전체 세션을 그대로 API에 전송하면 토큰이 과다 소모됨 (대화 전체 포함 시 세션당 수백 토큰)
+
+**해결:** `SessionSummary` 인터페이스를 별도 정의 — `{ date, title, department?, urgency?, urgencyReason?, messageCount }` 만 전송
+
+**효과:** 세션당 전송 토큰 약 10개 수준으로 최소화. 100건 이력도 1000토큰 이내 처리 가능.
+
+---
+
+*마지막 업데이트: 2026-03-16 09:30*
 *작성: dijeon (유비케어 IT개발본부)*

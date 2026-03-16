@@ -1,6 +1,6 @@
 // ─── 앱 공통 타입 정의 ───────────────────────────────────
 
-export type ViewType = "chat" | "records" | "supplements" | "news";
+export type ViewType = "chat" | "records" | "supplements" | "news" | "insight";
 
 export interface SymptomData {
   department: string;
@@ -62,4 +62,36 @@ export interface NewsData {
 export interface IconProps {
   className?: string;
   style?: React.CSSProperties;
+}
+
+// ─── API 전송용 경량 세션 요약 타입 ──────────────────────
+export interface SessionSummary {
+  date: string;
+  title: string;
+  department?: string;
+  urgency?: string;
+  urgencyReason?: string;
+  messageCount: number;
+}
+
+// ─── 건강 이력 인사이트 데이터 ───────────────────────────
+export interface HealthInsightData {
+  period: string;
+  totalSessions: number;
+  averagePerMonth: number;
+  topKeywords: { keyword: string; count: number }[];
+  departmentStats: { department: string; count: number }[];
+  urgencyBreakdown: { level: string; count: number }[];
+  symptomTimeline: { date: string; symptoms: string[] }[];
+  recommendations: string[];
+  overallAssessment: string;
+}
+
+// ─── 아침 건강 브리핑 데이터 ─────────────────────────────
+export interface MorningBriefingData {
+  greeting: string;
+  recentSummary?: string;
+  seasonalTip: string;
+  todayAdvice: string;
+  quickCheckItems: string[];
 }

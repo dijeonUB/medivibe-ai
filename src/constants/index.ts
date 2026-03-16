@@ -2,8 +2,10 @@
 
 export const UBCARE_ORANGE = "#ec6120";
 export const STORAGE_KEY = "medivibe_sessions";
-export const APP_VERSION = "v1.3.0";
-export const BUILD_DATE = "2026-03-13";
+export const APP_VERSION = "v1.4.0";
+export const BUILD_DATE = "2026-03-16";
+export const INSIGHT_CACHE_PREFIX = "medivibe_insight_";
+export const BRIEFING_CACHE_PREFIX = "medivibe_briefing_";
 export const FEEDBACK_EMAIL = "dijeon@ubcare.co.kr";
 
 export const URGENCY_STYLE = {
@@ -31,10 +33,22 @@ export const TECH_STACK = [
 
 export const UPDATE_HISTORY = [
   {
-    version: "v1.3.0",
-    date: "2026-03-13",
+    version: "v1.4.0",
+    date: "2026-03-16",
     badge: "최신",
     badgeColor: "#22c55e",
+    items: [
+      "주간 건강 인사이트 리포트 탭 신규 추가",
+      "아침 건강 브리핑 카드 (채팅 빈 상태에 표시)",
+      "7일 상담 패턴 AI 분석 (키워드·진료과·긴급도)",
+      "인사이트/브리핑 localStorage 캐싱 적용",
+    ],
+  },
+  {
+    version: "v1.3.0",
+    date: "2026-03-13",
+    badge: null,
+    badgeColor: null,
     items: [
       "건강식품 추천 속도 개선 및 캐시 적용",
       "더보기 기능 — 최대 10개 제품/뉴스 조회",
