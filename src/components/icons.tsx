@@ -2,6 +2,17 @@
 
 import { IconProps } from "@/types";
 
+// MediQ 브랜드 아이콘 — 둥근 의료 십자가 (filled)
+export function MediQIcon({ className, style }: IconProps) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="9" y="2" width="6" height="20" rx="3" />
+      <rect x="2" y="9" width="20" height="6" rx="3" />
+    </svg>
+  );
+}
+
+// 네비게이션용 펄스 아이콘 (AI 상담 탭)
 export function PulseIcon({ className, style }: IconProps) {
   return (
     <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

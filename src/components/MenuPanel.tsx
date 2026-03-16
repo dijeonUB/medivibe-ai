@@ -3,9 +3,8 @@
 // ─── 메뉴 패널 (슬라이드 오버) ───────────────────────────
 
 import { useState } from "react";
-import Image from "next/image";
 import { UBCARE_ORANGE, APP_VERSION, BUILD_DATE, FEEDBACK_EMAIL, TECH_STACK, UPDATE_HISTORY } from "@/constants";
-import { PulseIcon, CalendarIcon, PillIcon, NewsIcon, InsightIcon } from "@/components/icons";
+import { MediQIcon, CalendarIcon, PillIcon, NewsIcon, InsightIcon, PulseIcon } from "@/components/icons";
 
 // 기능 가이드 — 아이콘 컴포넌트에 의존하므로 컴포넌트 내부에서 정의
 const FEATURE_GUIDE = [
@@ -90,7 +89,7 @@ export default function MenuPanel({ onClose, onStartTutorial }: MenuPanelProps) 
 
   const handleFeedbackSubmit = () => {
     if (!fbTitle.trim() || !fbBody.trim()) return;
-    const subject = encodeURIComponent(`[MediVibe 불만접수] ${fbTitle}`);
+    const subject = encodeURIComponent(`[MediQ 불만접수] ${fbTitle}`);
     const body = encodeURIComponent(`${fbBody}\n\n---\n앱 버전: ${APP_VERSION}\n접수일: ${new Date().toLocaleDateString("ko-KR")}`);
     window.location.href = `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
     setFbSent(true);
@@ -101,12 +100,17 @@ export default function MenuPanel({ onClose, onStartTutorial }: MenuPanelProps) 
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white w-full max-w-xs lg:max-w-sm h-full flex flex-col shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: UBCARE_ORANGE }}>
-          <div className="flex items-center gap-2">
-            <Image src="/ubcare-logo.png" alt="UBcare" width={60} height={18} className="object-contain brightness-0 invert" />
-            <span className="font-bold text-white text-sm">MediVibe AI</span>
+        <div className="flex items-center justify-between px-4 py-3.5" style={{ backgroundColor: UBCARE_ORANGE }}>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+              <MediQIcon className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-white text-sm leading-tight">MediQ</p>
+              <p className="text-white/70 text-[10px] leading-tight">Your Health Intelligence</p>
+            </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white text-xl">×</button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 text-white text-lg leading-none">×</button>
         </div>
 
         {/* 사용 가이드 체험 버튼 */}
@@ -170,7 +174,7 @@ export default function MenuPanel({ onClose, onStartTutorial }: MenuPanelProps) 
           {/* ── 업데이트 내역 ── */}
           {tab === "updates" && (
             <div className="p-4 space-y-4">
-              <p className="text-xs text-gray-500">MediVibe AI의 기능 업데이트 내역입니다.</p>
+              <p className="text-xs text-gray-500">MediQ의 기능 업데이트 내역입니다.</p>
               {UPDATE_HISTORY.map((rel, i) => (
                 <div key={i} className={`rounded-xl border overflow-hidden ${i === 0 ? "border-orange-200" : "border-gray-200"}`}>
                   <div className={`flex items-center justify-between px-4 py-2.5 ${i === 0 ? "bg-orange-50" : "bg-gray-50"}`}>
@@ -208,9 +212,11 @@ export default function MenuPanel({ onClose, onStartTutorial }: MenuPanelProps) 
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-100">
-                  <Image src="/ubcare-logo.png" alt="UBcare" width={72} height={22} className="object-contain" />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: UBCARE_ORANGE }}>
+                    <MediQIcon className="w-5 h-5 text-white" />
+                  </div>
                   <div>
-                    <p className="text-sm font-bold text-gray-900">MediVibe AI</p>
+                    <p className="text-sm font-bold text-gray-900">MediQ</p>
                     <p className="text-xs text-gray-500">AI 기반 의료 정보 도우미</p>
                   </div>
                 </div>
